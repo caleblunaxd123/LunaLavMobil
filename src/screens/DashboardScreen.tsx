@@ -21,6 +21,7 @@ function greeting() {
 /** "+12% vs ayer" — comparación simple para leer la tendencia de un vistazo. */
 function versus(today: number, yesterday: number) {
   if (!yesterday) return today ? 'Ayer no hubo movimiento' : 'Sin movimiento aún';
+  if (!today) return 'Sin movimiento aún';
   const pct = Math.round(((today - yesterday) / yesterday) * 100);
   return `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs ayer`;
 }

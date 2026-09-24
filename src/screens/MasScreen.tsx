@@ -45,7 +45,7 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
             <AppText variant="heading" numberOfLines={1}>{usuario.nombreCompleto}</AppText>
             <AppText variant="caption">@{usuario.usuario}</AppText>
             <View style={styles.badges}>
-              <Badge label={usuario.rol === 'ADMIN' ? 'Administrador' : usuario.rol.charAt(0) + usuario.rol.slice(1).toLowerCase()} tone="primary" dot={false} />
+              {usuario.rol !== 'DEMO' && <Badge label={usuario.rol === 'ADMIN' ? 'Administrador' : usuario.rol.charAt(0) + usuario.rol.slice(1).toLowerCase()} tone="primary" dot={false} />}
               {session.isDemo && <Badge label="Demo" tone="violet" dot={false} />}
             </View>
           </View>

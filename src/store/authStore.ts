@@ -83,7 +83,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const current = get().session;
       if (!current) return null;
       try {
-        const next = await refreshRequest(current);
+        // La demo no emite refresh token: al expirar se pide un acceso de visitante nuevo.
+        const next = current.isDemo ? await demoRequest() : await refreshRequest(current);
         await save(next);
         set({ session: next });
         return next;
