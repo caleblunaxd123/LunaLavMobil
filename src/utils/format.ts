@@ -1,6 +1,26 @@
-import { colors } from '../theme/colors';
+import type { Tone } from '../components/ui/Badge';
 
 export const money = (value: number | undefined | null) => `S/ ${(value ?? 0).toFixed(2)}`;
+
+export const relativeDay = (value?: string | null) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  const today = new Date();
+  const diff = Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+    - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Mañana';
+  if (diff === -1) return 'Ayer';
+  return date.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+};
+
+/** La fecha ya pasó (antes de hoy): sirve para marcar entregas atrasadas. */
+export function isPastDay(value?: string | null) {
+  if (!value) return false;
+  const d = new Date(value);
+  const t = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()) < new Date(t.getFullYear(), t.getMonth(), t.getDate());
+}
 
 export const shortDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—';
@@ -24,20 +44,37 @@ export function parseAmount(text: string) {
 }
 
 const processLabels: Record<string, string> = {
-  PENDIENTE: 'Pendiente', EN_PROCESO: 'En proceso', LISTO: 'Listo', ENTREGA_PARCIAL: 'Entrega parcial',
+  PENDIENTE: 'Recibido', EN_PROCESO: 'En proceso', LISTO: 'Listo para entregar', ENTREGA_PARCIAL: 'Entrega parcial',
   ENTREGADO: 'Entregado', DONADO: 'Donado', ANULADO: 'Anulado',
 };
-const processColors: Record<string, string> = {
-  PENDIENTE: colors.warning, EN_PROCESO: colors.primary, LISTO: colors.success, ENTREGA_PARCIAL: colors.mint,
-  ENTREGADO: colors.muted, DONADO: colors.violet, ANULADO: colors.danger,
+const processTones: Record<string, Tone> = {
+  PENDIENTE: 'warning', EN_PROCESO: 'primary', LISTO: 'success', ENTREGA_PARCIAL: 'teal',
+  ENTREGADO: 'neutral', DONADO: 'violet', ANULADO: 'danger',
 };
 const paymentLabels: Record<string, string> = { PENDIENTE: 'Por cobrar', PARCIAL: 'Pago parcial', PAGADO: 'Pagado' };
-const paymentColors: Record<string, string> = { PENDIENTE: colors.danger, PARCIAL: colors.warning, PAGADO: colors.success };
+const paymentTones: Record<string, Tone> = { PENDIENTE: 'danger', PARCIAL: 'warning', PAGADO: 'success' };
 
 export const processLabel = (estado: string) => processLabels[estado] ?? estado;
-export const processColor = (estado: string) => processColors[estado] ?? colors.muted;
+export const processTone = (estado: string): Tone => processTones[estado] ?? 'neutral';
 export const paymentLabel = (estado: string) => paymentLabels[estado] ?? estado;
-export const paymentColor = (estado: string) => paymentColors[estado] ?? colors.muted;
+export const paymentTone = (estado: string): Tone => paymentTones[estado] ?? 'neutral';
+
+/** Etapas visibles del pedido, en el orden en que avanza. */
+export const PROCESS_STEPS = [
+  { estado: 'PENDIENTE', label: 'Recibido' },
+  { estado: 'EN_PROCESO', label: 'En proceso' },
+  { estado: 'LISTO', label: 'Listo' },
+  { estado: 'ENTREGADO', label: 'Entregado' },
+];
+
+const plurals: Record<string, string> = { unidad: 'unidades', par: 'pares', docena: 'docenas', prenda: 'prendas', juego: 'juegos', metro: 'metros' };
+
+/** "4 unidades", "1 par", "2.5 kg": cantidad con su unidad en singular o plural. */
+export function quantityLabel(cantidad: number, unidad?: string | null) {
+  const u = (unidad ?? '').toLowerCase();
+  const n = Number.isInteger(cantidad) ? String(cantidad) : cantidad.toFixed(2).replace(/0$/, '');
+  return `${n} ${cantidad === 1 ? u : plurals[u] ?? u}`.trim();
+}
 
 export const methodLabel = (metodo: string) =>
   ({ EFECTIVO: 'Efectivo', YAPE: 'Yape', PLIN: 'Plin', TRANSFERENCIA: 'Transferencia', POS: 'Tarjeta (POS)', TARJETA: 'Tarjeta' } as Record<string, string>)[metodo] ?? metodo;

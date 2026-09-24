@@ -2,10 +2,19 @@ import { api } from './http';
 
 export interface DashboardData {
   ordenesHoy: number;
+  ordenesAyer: number;
   ventasDelDia: number;
+  ventasAyer: number;
+  cobradoDelDia?: number | null;
+  saldoPorCobrar?: number | null;
   totalPendientes: number;
+  totalEnProceso: number;
   totalListos: number;
   totalClientes: number;
+  clientesNuevosMes: number;
+  pedidosEntregadosHoy: number;
+  totalPedidosAbandonados: number;
+  insumosBajoStock?: number | null;
   ordenesRecientes: {
     numero: number;
     clienteNombre: string;
@@ -133,9 +142,12 @@ export async function getDashboard() {
 
 // ---------- Pedidos ----------
 
-export async function getPedidos(filtro: FiltroPedidos, busqueda = '') {
+export const PAGE_SIZE = 15;
+
+/** Paginado en el servidor: cada página trae solo {@link PAGE_SIZE} pedidos. */
+export async function getPedidos(filtro: FiltroPedidos, busqueda = '', pagina = 1) {
   const { data } = await api.get<PagedResult<Pedido>>('/api/pedidos', {
-    params: { filtro, busqueda: busqueda.trim() || undefined, pagina: 1, tamanoPagina: 50 },
+    params: { filtro, busqueda: busqueda.trim() || undefined, pagina, tamanoPagina: PAGE_SIZE },
   });
   return data;
 }
@@ -171,9 +183,12 @@ export async function getServicios() {
 
 // ---------- Clientes ----------
 
-export async function getClientes(texto = '') {
+/** Tope de clientes por consulta: la API no pagina clientes, así que se pagina en el móvil. */
+export const CLIENTES_LIMIT = 200;
+
+export async function getClientes(texto = '', limite = CLIENTES_LIMIT) {
   const { data } = await api.get<Cliente[]>('/api/clientes', {
-    params: { texto: texto.trim() || undefined, limite: 60 },
+    params: { texto: texto.trim() || undefined, limite },
   });
   return data;
 }
@@ -183,9 +198,9 @@ export async function getCliente(id: number) {
   return data;
 }
 
-export async function getPedidosCliente(id: number) {
+export async function getPedidosCliente(id: number, pagina = 1) {
   const { data } = await api.get<PagedResult<Pedido>>(`/api/pedidos/por-cliente/${id}`, {
-    params: { pagina: 1, tamanoPagina: 20 },
+    params: { pagina, tamanoPagina: 10 },
   });
   return data;
 }
@@ -214,6 +229,41 @@ export async function getTiposGasto() {
 export async function registrarGasto(payload: RegistrarGastoPayload) {
   const { data } = await api.post<MovimientoCaja>('/api/caja/gastos', payload);
   return data;
+}
+
+// ---------- Inventario ----------
+
+export interface Insumo {
+  id: number;
+  nombre: string;
+  unidadMedida: string;
+  clase: string;
+  favorito: boolean;
+  contenidoValor?: number | null;
+  contenidoUnidad?: string | null;
+  stockActual: number;
+  stockMinimo: number;
+  activo: boolean;
+  ultimaCompra?: string | null;
+}
+
+export type TipoMovimientoInsumo = 'COMPRA' | 'CONSUMO' | 'AJUSTE';
+
+export interface MovimientoInsumoPayload {
+  tipo: TipoMovimientoInsumo;
+  cantidad: number;
+  costoTotal?: number;
+  metodoPago?: MetodoPago;
+  descripcion?: string;
+}
+
+export async function getInsumos() {
+  const { data } = await api.get<Insumo[]>('/api/insumos');
+  return data;
+}
+
+export async function registrarMovimientoInsumo(id: number, payload: MovimientoInsumoPayload) {
+  await api.post(`/api/insumos/${id}/movimientos`, payload);
 }
 
 // ---------- Sedes ----------

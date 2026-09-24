@@ -1,9 +1,10 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { FiltroPedidos } from '../api/operationsApi';
 
-export type AuthStackParamList = { Welcome: undefined; Login: undefined; Trial: undefined };
-export type AppTabsParamList = { Inicio: undefined; Pedidos: undefined; Clientes: undefined; Caja: undefined; Más: undefined };
+export type AuthStackParamList = { Welcome: undefined; Login: { empresaSlug?: string; usuario?: string } | undefined; Registro: undefined };
+export type AppTabsParamList = { Inicio: undefined; Pedidos: { filtro?: FiltroPedidos } | undefined; Clientes: undefined; Caja: undefined; Más: undefined };
 
 export type AppStackParamList = {
   Tabs: NavigatorScreenParams<AppTabsParamList>;
@@ -12,6 +13,7 @@ export type AppStackParamList = {
   ClienteDetalle: { id: number };
   ClienteForm: { id?: number } | undefined;
   NuevoGasto: undefined;
+  Inventario: undefined;
   SeleccionarSede: undefined;
 };
 

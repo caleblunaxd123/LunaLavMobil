@@ -96,6 +96,12 @@ export interface TrialRegistrationResponse {
   diasPrueba: number;
 }
 
+/** El servidor todavía no publica el alta autónoma (endpoint inexistente). */
+export class RegistrationUnavailableError extends Error {}
+
+const endpointMissing = (error: unknown) =>
+  isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 405);
+
 export async function registerTrial(payload: TrialRegistrationPayload): Promise<TrialRegistrationResponse> {
   try {
     const { data } = await axios.post<TrialRegistrationResponse>(
@@ -103,7 +109,22 @@ export async function registerTrial(payload: TrialRegistrationPayload): Promise<
     );
     return data;
   } catch (error) {
+    if (endpointMissing(error)) throw new RegistrationUnavailableError('El alta automática no está disponible.');
     throw new Error(errorMessage(error));
+  }
+}
+
+export type SlugCheck = { status: 'available' } | { status: 'taken'; message: string } | { status: 'unknown' };
+
+/** Consulta si el código de empresa está libre. Si el servidor no lo soporta, no bloquea el registro. */
+export async function checkSlug(slug: string): Promise<SlugCheck> {
+  try {
+    const { data } = await axios.get<{ disponible: boolean; mensaje?: string }>(
+      `${API_ORIGINS.production}/api/registro/disponible`, { params: { slug }, timeout: 8_000 },
+    );
+    return data.disponible ? { status: 'available' } : { status: 'taken', message: data.mensaje ?? 'Ese código ya está en uso.' };
+  } catch {
+    return { status: 'unknown' };
   }
 }
 
