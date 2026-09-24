@@ -25,6 +25,7 @@ export const Field = forwardRef<TextInput, FieldProps>(({ label, icon, password,
     </View>
   );
 });
+Field.displayName = 'Field';
 
 const styles = StyleSheet.create({
   group: { gap: 7 }, label: { color: colors.text, fontSize: 13, fontWeight: '700' },

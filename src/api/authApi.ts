@@ -1,5 +1,6 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import type { LoginPayload, Session } from '../types/auth';
+import { apiErrorMessage, SessionExpiredError } from './errors';
 
 export const API_ORIGINS = {
   production: process.env.EXPO_PUBLIC_API_ORIGIN?.replace(/\/$/, '') || 'https://app.lunalav.pe',
@@ -8,14 +9,7 @@ export const API_ORIGINS = {
 
 type LoginResponse = Omit<Session, 'apiOrigin' | 'isDemo'>;
 
-function errorMessage(error: unknown) {
-  if (axios.isAxiosError(error)) {
-    const message = error.response?.data?.mensaje;
-    if (typeof message === 'string') return message;
-    if (!error.response) return 'No pudimos conectar con LunaLav. Revisa tu conexión.';
-  }
-  return 'Ocurrió un problema inesperado. Inténtalo nuevamente.';
-}
+const errorMessage = (error: unknown) => apiErrorMessage(error);
 
 export async function loginRequest(payload: LoginPayload): Promise<Session> {
   try {
@@ -33,6 +27,33 @@ export async function demoRequest(): Promise<Session> {
   try {
     const { data } = await axios.post<LoginResponse>(`${API_ORIGINS.demo}/api/auth/demo-acceso`, {}, { timeout: 15_000 });
     return { ...data, apiOrigin: API_ORIGINS.demo, isDemo: true };
+  } catch (error) {
+    throw new Error(errorMessage(error));
+  }
+}
+
+/**
+ * Canjea el refresh token por una sesión nueva. La API rota el token en cada uso, por eso
+ * la sesión devuelta reemplaza por completo a la anterior.
+ */
+export async function refreshRequest(session: Session): Promise<Session> {
+  try {
+    const { data } = await axios.post<LoginResponse>(`${session.apiOrigin}/api/auth/refresh`,
+      { refreshToken: session.refreshToken }, { timeout: 15_000 });
+    return { ...data, apiOrigin: session.apiOrigin, isDemo: session.isDemo };
+  } catch (error) {
+    const status = isAxiosError(error) ? error.response?.status : undefined;
+    if (status === 401 || status === 403) throw new SessionExpiredError(errorMessage(error));
+    throw new Error(errorMessage(error));
+  }
+}
+
+export async function selectSedeRequest(session: Session, sedeId: number): Promise<Session> {
+  try {
+    const { data } = await axios.post<LoginResponse>(`${session.apiOrigin}/api/auth/seleccionar-sede`,
+      { sedeId, refreshToken: session.refreshToken },
+      { timeout: 15_000, headers: { Authorization: `Bearer ${session.accessToken}` } });
+    return { ...data, apiOrigin: session.apiOrigin, isDemo: session.isDemo };
   } catch (error) {
     throw new Error(errorMessage(error));
   }
