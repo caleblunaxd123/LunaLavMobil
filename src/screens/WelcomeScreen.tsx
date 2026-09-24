@@ -1,54 +1,100 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Brand } from '../components/Brand';
+import { Logo } from '../components/brand';
+import { AppText, Button, InlineAlert } from '../components/ui';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
-import { colors } from '../theme/colors';
+import { colors, fonts, radius, shadow, space } from '../theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
+
+const benefits: { icon: keyof typeof Ionicons.glyphMap; title: string; text: string }[] = [
+  { icon: 'receipt-outline', title: 'Pedidos en segundos', text: 'Registra, cobra y avisa por WhatsApp cuando esté listo.' },
+  { icon: 'wallet-outline', title: 'Caja siempre cuadrada', text: 'Ingresos, gastos y efectivo del día, sin cuadernos.' },
+  { icon: 'people-outline', title: 'Clientes que vuelven', text: 'Historial, puntos y datos de contacto a la mano.' },
+];
 
 export function WelcomeScreen({ navigation }: Props) {
   const { enterDemo, busy, error, clearError } = useAuthStore();
   const openDemo = async () => { clearError(); await enterDemo(); };
-  return <LinearGradient colors={['#F8FCFF', '#EAF8FF', '#F1F0FF']} style={styles.flex}>
-    <SafeAreaView style={styles.flex}><ScrollView contentContainerStyle={styles.content}>
-      <Brand />
-      <View style={styles.illustration}>
-        <LinearGradient colors={[colors.navy, colors.primary]} style={styles.phone}>
-          <View style={styles.phoneTop}><View style={styles.camera} /></View>
-          <View style={styles.phoneBody}><Ionicons name="shirt-outline" size={46} color={colors.primary} />
-            <Text style={styles.phoneTitle}>Todo bajo control</Text>
-            <View style={styles.miniRow}><View style={styles.miniDot} /><View style={styles.miniLine} /></View>
-            <View style={styles.miniRow}><View style={[styles.miniDot, { backgroundColor: colors.mint }]} /><View style={[styles.miniLine, { width: '58%' }]} /></View>
-            <View style={styles.miniRow}><View style={[styles.miniDot, { backgroundColor: colors.violet }]} /><View style={[styles.miniLine, { width: '72%' }]} /></View>
+
+  return (
+    <View style={styles.root}>
+      <LinearGradient colors={[colors.navy, colors.navyGradientEnd]} style={styles.hero}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.heroTop}><Logo width={250} variant="white" /></View>
+          <View style={styles.preview}>
+            <PreviewRow icon="checkmark-circle" tint="#34D399" title="Pedido #1024 listo" meta="WhatsApp enviado a María" />
+            <PreviewRow icon="trending-up" tint={colors.sky} title="S/ 1,280.50 hoy" meta="32 pedidos · 5 por entregar" />
           </View>
-        </LinearGradient>
-        <View style={[styles.floatCard, styles.floatOne]}><Ionicons name="checkmark-circle" color={colors.success} size={22} /><Text style={styles.floatText}>Pedido listo</Text></View>
-        <View style={[styles.floatCard, styles.floatTwo]}><Ionicons name="trending-up" color={colors.primary} size={22} /><Text style={styles.floatText}>Tu negocio crece</Text></View>
+        </SafeAreaView>
+      </LinearGradient>
+
+      <View style={styles.sheet}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <AppText variant="display">Tu lavandería, ordenada y en tu bolsillo</AppText>
+          <AppText variant="body" style={styles.lead}>La misma información de LunaLav web, en una app hecha para el mostrador. Prueba 14 días gratis, sin tarjeta.</AppText>
+
+          <View style={styles.benefits}>
+            {benefits.map((b) => (
+              <View key={b.title} style={styles.benefit}>
+                <View style={styles.benefitIcon}><Ionicons name={b.icon} size={20} color={colors.primary} /></View>
+                <View style={styles.flex}>
+                  <AppText variant="subheading">{b.title}</AppText>
+                  <AppText variant="caption">{b.text}</AppText>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {!!error && <View style={styles.error}><InlineAlert text={error} /></View>}
+        </ScrollView>
+        {/* Acciones fijas al pie: siempre visibles, sin importar el tamaño de la pantalla. */}
+        <SafeAreaView edges={['bottom']} style={styles.footer}>
+          <Button label="Crear cuenta gratis" iconRight="arrow-forward" onPress={() => navigation.navigate('Registro')} disabled={busy} />
+          <Button label="Ya tengo una cuenta" variant="secondary" onPress={() => navigation.navigate('Login')} disabled={busy} style={styles.second} />
+          <Pressable onPress={openDemo} disabled={busy} style={styles.demo} accessibilityRole="button">
+            <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
+            <AppText variant="captionStrong" color={colors.primary}>{busy ? 'Abriendo la demo…' : 'Explorar la demo sin registrarme'}</AppText>
+          </Pressable>
+        </SafeAreaView>
       </View>
-      <View style={styles.hero}><Text style={styles.eyebrow}>LA LAVANDERÍA EN TU BOLSILLO</Text>
-        <Text style={styles.title}>Gestiona cada pedido, desde cualquier lugar.</Text>
-        <Text style={styles.subtitle}>Pedidos, clientes, caja e inventario conectados en una aplicación hecha para lavanderías.</Text>
+    </View>
+  );
+}
+
+function PreviewRow({ icon, tint, title, meta }: { icon: keyof typeof Ionicons.glyphMap; tint: string; title: string; meta: string }) {
+  return (
+    <View style={styles.previewRow}>
+      <Ionicons name={icon} size={22} color={tint} />
+      <View style={styles.flex}>
+        <AppText style={styles.previewTitle}>{title}</AppText>
+        <AppText style={styles.previewMeta}>{meta}</AppText>
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
-      <Pressable style={styles.primaryButton} onPress={() => navigation.navigate('Trial')} disabled={busy}><Text style={styles.primaryText}>Comenzar prueba gratis</Text><Ionicons name="arrow-forward" size={20} color="#FFFFFF" /></Pressable>
-      <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('Login')} disabled={busy}><Text style={styles.secondaryText}>Ya tengo una cuenta</Text></Pressable>
-      <Pressable style={styles.demoButton} onPress={openDemo} disabled={busy}>{busy ? <ActivityIndicator color={colors.primary} /> : <><Ionicons name="play-circle-outline" size={21} color={colors.primary} /><Text style={styles.demoText}>Explorar demo sin registrarme</Text></>}</Pressable>
-      <Text style={styles.legal}>Al continuar aceptas los Términos y la Política de privacidad de LunaLav.</Text>
-    </ScrollView></SafeAreaView>
-  </LinearGradient>;
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 }, content: { paddingHorizontal: 24, paddingTop: 18, paddingBottom: 28 }, illustration: { height: 265, alignItems: 'center', justifyContent: 'center', marginTop: 18 },
-  phone: { width: 165, height: 235, borderRadius: 30, padding: 8, transform: [{ rotate: '3deg' }], shadowColor: colors.navy, shadowOpacity: 0.22, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 12 },
-  phoneTop: { height: 20, alignItems: 'center' }, camera: { width: 48, height: 5, borderRadius: 3, backgroundColor: '#315A81' }, phoneBody: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 23, alignItems: 'center', paddingTop: 22, paddingHorizontal: 17 },
-  phoneTitle: { color: colors.navy, fontSize: 15, fontWeight: '800', marginTop: 8, marginBottom: 18 }, miniRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }, miniDot: { width: 18, height: 18, borderRadius: 6, backgroundColor: colors.cyan }, miniLine: { height: 7, width: '68%', borderRadius: 4, backgroundColor: '#DBEAF5' },
-  floatCard: { position: 'absolute', flexDirection: 'row', gap: 7, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10, shadowColor: colors.navy, shadowOpacity: 0.12, shadowRadius: 15, elevation: 6 }, floatOne: { top: 42, right: 5 }, floatTwo: { bottom: 30, left: 4 }, floatText: { color: colors.navy, fontWeight: '800', fontSize: 12 },
-  hero: { alignItems: 'center' }, eyebrow: { color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 1.4, marginBottom: 9 }, title: { color: colors.navy, fontSize: 31, lineHeight: 36, fontWeight: '900', textAlign: 'center', letterSpacing: -0.8 }, subtitle: { color: colors.muted, fontSize: 15, lineHeight: 23, textAlign: 'center', marginTop: 12, marginBottom: 20 },
-  primaryButton: { height: 56, borderRadius: 17, backgroundColor: colors.primary, flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', shadowColor: colors.primary, shadowOpacity: 0.25, shadowRadius: 14, elevation: 6 }, primaryText: { color: '#FFFFFF', fontWeight: '900', fontSize: 16 }, secondaryButton: { height: 54, borderRadius: 17, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 11 }, secondaryText: { color: colors.navy, fontWeight: '800', fontSize: 15 },
-  demoButton: { flexDirection: 'row', gap: 7, justifyContent: 'center', alignItems: 'center', paddingVertical: 16 }, demoText: { color: colors.primary, fontWeight: '800' }, legal: { color: '#8295A7', fontSize: 11, textAlign: 'center', lineHeight: 16 }, error: { color: colors.danger, textAlign: 'center', marginBottom: 10 },
+  flex: { flex: 1 },
+  root: { flex: 1, backgroundColor: colors.navy },
+  hero: { paddingHorizontal: space.xl, paddingBottom: 40 },
+  heroTop: { paddingTop: space.md },
+  preview: { marginTop: space.lg, gap: space.sm },
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10 },
+  previewTitle: { color: '#FFFFFF', fontFamily: fonts.semibold, fontSize: 14 },
+  previewMeta: { color: colors.onNavyMuted, fontFamily: fonts.regular, fontSize: 12 },
+  sheet: { flex: 1, backgroundColor: colors.background, marginTop: -24, borderTopLeftRadius: 28, borderTopRightRadius: 28, ...shadow.md },
+  content: { padding: space.xl, paddingTop: space.xxl, paddingBottom: space.lg },
+  footer: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.sm },
+  lead: { marginTop: space.sm },
+  benefits: { marginTop: space.xl, gap: space.lg },
+  benefit: { flexDirection: 'row', gap: space.md, alignItems: 'center' },
+  benefitIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  error: { marginBottom: space.md },
+  second: { marginTop: space.sm },
+  demo: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
 });

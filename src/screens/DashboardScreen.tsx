@@ -1,45 +1,156 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { getDashboard } from '../api/operationsApi';
-import { Brand } from '../components/Brand';
+import { LogoMark } from '../components/brand';
+import { AppText, Avatar, Card, Divider, ErrorState, InlineAlert, Kpi, Screen, Section, Skeleton } from '../components/ui';
 import { usePermissions, type Modulo } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
-import { colors } from '../theme/colors';
+import { colors, fonts, radius, shadow, space } from '../theme';
+import { money, processLabel } from '../utils/format';
 
-type Shortcut = { module: Modulo; label: string; icon: keyof typeof Ionicons.glyphMap; color: string; target: 'NuevoPedido' | 'Pedidos' | 'Clientes' | 'NuevoGasto' };
-const shortcuts: Shortcut[] = [
-  { module: 'REGISTRAR', label: 'Nuevo pedido', icon: 'add-circle-outline', color: colors.primary, target: 'NuevoPedido' },
-  { module: 'PEDIDOS', label: 'Ver pedidos', icon: 'receipt-outline', color: colors.violet, target: 'Pedidos' },
-  { module: 'CLIENTES', label: 'Clientes', icon: 'people-outline', color: colors.mint, target: 'Clientes' },
-  { module: 'CAJA', label: 'Registrar gasto', icon: 'remove-circle-outline', color: colors.warning, target: 'NuevoGasto' },
-];
+type IconName = keyof typeof Ionicons.glyphMap;
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+/** "+12% vs ayer" — comparación simple para leer la tendencia de un vistazo. */
+function versus(today: number, yesterday: number) {
+  if (!yesterday) return today ? 'Ayer no hubo movimiento' : 'Sin movimiento aún';
+  const pct = Math.round(((today - yesterday) / yesterday) * 100);
+  return `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs ayer`;
+}
 
 export function DashboardScreen({ navigation }: TabScreenProps<'Inicio'>) {
-  const session = useAuthStore((state) => state.session)!;
-  const allowed = usePermissions();
-  const dashboard = useQuery({ queryKey: ['dashboard', session.usuario.negocioId, session.usuario.sedeId], queryFn: getDashboard, enabled: allowed('INICIO') });
-  return <SafeAreaView style={styles.safe} edges={['top']}><ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={dashboard.isRefetching} onRefresh={() => void dashboard.refetch()} tintColor={colors.primary} />}>
-    <View style={styles.top}><Brand compact /><Pressable style={styles.avatar} onPress={() => navigation.navigate('Más')} accessibilityLabel="Mi cuenta"><Text style={styles.avatarText}>{session.usuario.nombreCompleto.charAt(0).toUpperCase()}</Text></Pressable></View>
-    {session.isDemo && <View style={styles.demoBanner}><Ionicons name="sparkles" size={18} color="#6D45D8" /><Text style={styles.demoText}>Estás explorando una demo con datos ficticios.</Text></View>}
-    <LinearGradient colors={[colors.navy, '#0D5790']} style={styles.hero}><Text style={styles.hello}>Hola, {session.usuario.nombreCompleto.split(' ')[0]} 👋</Text><Text style={styles.heroTitle}>{session.usuario.sedeNombre || 'Tu lavandería'}, bajo control.</Text><View style={styles.heroMeta}><Ionicons name="business-outline" color="#BDE9FF" size={16} /><Text style={styles.heroMetaText}>{session.usuario.rol} · Empresa #{session.usuario.negocioId}</Text></View></LinearGradient>
-    <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Accesos rápidos</Text><Text style={styles.sectionLink}>Personalizados para ti</Text></View>
-    <View style={styles.grid}>{shortcuts.filter((item) => allowed(item.module)).map((item) => <Pressable key={item.module} style={styles.shortcut} onPress={() => navigation.navigate(item.target)}><View style={[styles.shortcutIcon, { backgroundColor: `${item.color}18` }]}><Ionicons name={item.icon} size={27} color={item.color} /></View><Text style={styles.shortcutText}>{item.label}</Text><Ionicons name="chevron-forward" size={17} color="#9AAEBF" /></Pressable>)}</View>
-    <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Resumen de hoy</Text><Text style={styles.sectionLink}>En tiempo real</Text></View>
-    {!allowed('INICIO') ? <View style={styles.info}><Ionicons name="lock-closed-outline" size={22} color={colors.muted} /><Text style={styles.infoText}>Tu usuario no tiene acceso al resumen del día.</Text></View> : dashboard.isLoading ? <ActivityIndicator color={colors.primary} style={{ marginVertical: 30 }} /> : dashboard.isError ? <View style={styles.info}><Ionicons name="cloud-offline-outline" size={22} color={colors.danger} /><Text style={styles.infoText}>No se pudo cargar el resumen. Desliza hacia abajo para reintentar.</Text></View> : <>
-      <View style={styles.stats}><View style={styles.stat}><Text style={styles.statLabel}>Pedidos de hoy</Text><Text style={styles.statNumber}>{dashboard.data?.ordenesHoy ?? 0}</Text><Text style={styles.statHint}>{dashboard.data?.totalPendientes ?? 0} pendientes · {dashboard.data?.totalListos ?? 0} listos</Text></View><View style={styles.stat}><Text style={styles.statLabel}>Ventas de hoy</Text><Text style={styles.statNumber}>S/ {(dashboard.data?.ventasDelDia ?? 0).toFixed(2)}</Text><Text style={styles.statHint}>{dashboard.data?.totalClientes ?? 0} clientes registrados</Text></View></View>
-      {!!dashboard.data?.ordenesRecientes?.length && <View style={styles.recent}><Text style={styles.recentTitle}>Actividad reciente</Text>{dashboard.data.ordenesRecientes.slice(0, 4).map((order) => <Pressable key={order.numero} style={styles.recentRow} onPress={() => allowed('PEDIDOS') && navigation.navigate('Pedidos')}><View style={styles.orderBadge}><Text style={styles.orderBadgeText}>#{order.numero}</Text></View><View style={{ flex: 1 }}><Text style={styles.orderName}>{order.clienteNombre}</Text><Text style={styles.orderMeta}>{order.servicioPrincipal} · {order.estadoProceso}</Text></View><Text style={styles.orderTotal}>S/ {order.total.toFixed(2)}</Text></Pressable>)}</View>}
-    </>}
-  </ScrollView></SafeAreaView>;
+  const session = useAuthStore((s) => s.session)!;
+  const can = usePermissions();
+  const { usuario } = session;
+  const dashboard = useQuery({
+    queryKey: ['dashboard', usuario.negocioId, usuario.sedeId], queryFn: getDashboard, enabled: can('INICIO'), refetchInterval: 60_000,
+  });
+  const d = dashboard.data;
+
+  const shortcuts: { module: Modulo; label: string; icon: IconName; tint: string; onPress: () => void }[] = [
+    { module: 'PEDIDOS', label: 'Pedidos', icon: 'receipt-outline', tint: colors.primary, onPress: () => navigation.navigate('Pedidos') },
+    { module: 'CLIENTES', label: 'Clientes', icon: 'people-outline', tint: colors.teal, onPress: () => navigation.navigate('Clientes') },
+    { module: 'CAJA', label: 'Gasto', icon: 'remove-circle-outline', tint: colors.danger, onPress: () => navigation.navigate('NuevoGasto') },
+    { module: 'INVENTARIO', label: 'Inventario', icon: 'cube-outline', tint: colors.warning, onPress: () => navigation.navigate('Inventario') },
+  ];
+  const visibleShortcuts = shortcuts.filter((s) => can(s.module));
+
+  return (
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={dashboard.isRefetching} onRefresh={() => void dashboard.refetch()} tintColor={colors.primary} />}>
+        <View style={styles.top}>
+          <LogoMark size={46} />
+          <View style={styles.flex}>
+            <AppText variant="caption">{greeting()},</AppText>
+            <AppText variant="title" numberOfLines={1}>{usuario.nombreCompleto.split(' ')[0]}</AppText>
+          </View>
+          <Pressable onPress={() => navigation.navigate('Más')} accessibilityRole="button" accessibilityLabel="Mi cuenta">
+            <Avatar name={usuario.nombreCompleto} size={44} />
+          </Pressable>
+        </View>
+
+        <Pressable onPress={usuario.rol === 'ADMIN' ? () => navigation.navigate('SeleccionarSede') : undefined}
+          style={styles.sede} accessibilityRole={usuario.rol === 'ADMIN' ? 'button' : undefined}>
+          <Ionicons name="storefront-outline" size={15} color={colors.primary} />
+          <AppText variant="captionStrong" color={colors.text}>{usuario.sedeNombre ?? 'Tu lavandería'}</AppText>
+          {usuario.rol === 'ADMIN' && <Ionicons name="chevron-down" size={14} color={colors.muted} />}
+        </Pressable>
+
+        {session.isDemo && <View style={styles.demo}><InlineAlert tone="info" icon="sparkles" title="Estás en la demo"
+          text="Los datos son de ejemplo. Crea tu cuenta gratis para usar LunaLav con tu lavandería." /></View>}
+
+        {can('REGISTRAR') && <Pressable onPress={() => navigation.navigate('NuevoPedido')} accessibilityRole="button" accessibilityLabel="Registrar nuevo pedido">
+          {({ pressed }) => (
+            <LinearGradient colors={[colors.navy, colors.navyGradientEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.cta, pressed && styles.pressed]}>
+              <View style={styles.ctaIcon}><Ionicons name="add" size={28} color={colors.navy} /></View>
+              <View style={styles.flex}>
+                <AppText style={styles.ctaTitle}>Nuevo pedido</AppText>
+                <AppText style={styles.ctaText}>Cliente, prendas y cobro en 3 pasos</AppText>
+              </View>
+              <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+            </LinearGradient>
+          )}
+        </Pressable>}
+
+        {can('INICIO') && <Section title="Resumen de hoy" action={d ? 'Actualizar' : undefined} onAction={() => void dashboard.refetch()}>
+          {dashboard.isLoading ? <View style={styles.kpis}>{[0, 1, 2, 3].map((i) => <View key={i} style={styles.kpiSkeleton}><Skeleton width="50%" /><Skeleton width="70%" height={24} /></View>)}</View>
+            : dashboard.isError || !d ? <ErrorState onRetry={() => void dashboard.refetch()} />
+              : <>
+                <View style={styles.kpis}>
+                  <Kpi icon="cash-outline" tone={colors.success} label="Ventas de hoy" value={money(d.ventasDelDia)} hint={versus(d.ventasDelDia, d.ventasAyer)} />
+                  <Kpi icon="receipt-outline" tone={colors.primary} label="Pedidos de hoy" value={String(d.ordenesHoy)} hint={versus(d.ordenesHoy, d.ordenesAyer)} />
+                  <Kpi icon="sync-outline" tone={colors.warning} label="En curso" value={String(d.totalPendientes + (d.totalEnProceso ?? 0))}
+                    hint="Ver pedidos en curso" onPress={can('PEDIDOS') ? () => navigation.navigate('Pedidos', { filtro: 'pendientes' }) : undefined} />
+                  <Kpi icon="bag-check-outline" tone={colors.teal} label="Por entregar" value={String(d.totalListos)}
+                    hint={`${d.pedidosEntregadosHoy ?? 0} entregados hoy`} onPress={can('PEDIDOS') ? () => navigation.navigate('Pedidos', { filtro: 'listos' }) : undefined} />
+                </View>
+                {(d.saldoPorCobrar ?? 0) > 0 && <View style={styles.block}><InlineAlert tone="warning" title={`${money(d.saldoPorCobrar)} por cobrar`}
+                  text="Saldo pendiente de pedidos activos. Cóbralo al entregar." /></View>}
+                {d.totalPedidosAbandonados > 0 && <View style={styles.block}><InlineAlert tone="info" icon="time-outline"
+                  title={`${d.totalPedidosAbandonados} pedidos esperan recojo hace días`} text="Avisa a tus clientes por WhatsApp desde el detalle del pedido." /></View>}
+              </>}
+        </Section>}
+
+        {visibleShortcuts.length > 0 && <Section title="Accesos rápidos">
+          <View style={styles.shortcuts}>
+            {visibleShortcuts.map((s) => (
+              <Pressable key={s.module} onPress={s.onPress} accessibilityRole="button" accessibilityLabel={s.label}
+                style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}>
+                <View style={[styles.shortcutIcon, { backgroundColor: `${s.tint}16` }]}><Ionicons name={s.icon} size={22} color={s.tint} /></View>
+                <AppText variant="captionStrong" color={colors.text}>{s.label}</AppText>
+              </Pressable>
+            ))}
+          </View>
+        </Section>}
+
+        {!!d?.ordenesRecientes?.length && <Section title="Actividad reciente" action="Ver todos" onAction={() => navigation.navigate('Pedidos', { filtro: 'ultimos' })}>
+          <Card padded={false}>
+            {d.ordenesRecientes.slice(0, 5).map((o, i) => (
+              <View key={o.numero}>
+                {i > 0 && <Divider inset={space.lg} />}
+                <View style={styles.recent}>
+                  <View style={styles.recentNumber}><AppText style={styles.recentNumberText}>#{o.numero}</AppText></View>
+                  <View style={styles.flex}>
+                    <AppText variant="subheading" numberOfLines={1}>{o.clienteNombre}</AppText>
+                    <AppText variant="caption" numberOfLines={1}>{o.servicioPrincipal} · {processLabel(o.estadoProceso)}</AppText>
+                  </View>
+                  <AppText variant="subheading">{money(o.total)}</AppText>
+                </View>
+              </View>
+            ))}
+          </Card>
+        </Section>}
+      </ScrollView>
+    </Screen>
+  );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background }, content: { padding: 20, paddingBottom: 32 }, top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }, avatar: { width: 43, height: 43, borderRadius: 15, backgroundColor: '#DDF3FF', alignItems: 'center', justifyContent: 'center' }, avatarText: { color: colors.primary, fontSize: 17, fontWeight: '900' },
-  demoBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F0EBFF', borderRadius: 14, padding: 12, marginBottom: 12 }, demoText: { color: '#6044A3', fontWeight: '700', fontSize: 12, flex: 1 }, hero: { borderRadius: 24, padding: 22, minHeight: 170, justifyContent: 'center', shadowColor: colors.navy, shadowOpacity: 0.2, shadowRadius: 16, elevation: 7 }, hello: { color: '#BDE9FF', fontWeight: '700', fontSize: 13 }, heroTitle: { color: '#FFFFFF', fontSize: 27, lineHeight: 33, fontWeight: '900', marginTop: 7, maxWidth: 270 }, heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 16 }, heroMetaText: { color: '#D9F2FF', fontSize: 12 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 25, marginBottom: 12 }, sectionTitle: { color: colors.navy, fontSize: 19, fontWeight: '900' }, sectionLink: { color: colors.muted, fontSize: 11 }, grid: { gap: 10 }, shortcut: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', padding: 13, borderRadius: 17, borderWidth: 1, borderColor: colors.border }, shortcutIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }, shortcutText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '800' },
-  stats: { flexDirection: 'row', gap: 10 }, stat: { flex: 1, minHeight: 130, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 15 }, statLabel: { color: colors.muted, fontWeight: '700', fontSize: 12 }, statNumber: { color: colors.navy, fontSize: 25, fontWeight: '900', marginTop: 10 }, statHint: { color: '#91A2B2', fontSize: 10, marginTop: 8, lineHeight: 14 }, info: { flexDirection: 'row', gap: 9, padding: 14, borderRadius: 15, backgroundColor: '#EAF7FF', marginTop: 18 }, infoText: { flex: 1, color: '#37617E', fontSize: 12, lineHeight: 18 },
-  recent: { marginTop: 16, backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, borderColor: colors.border, padding: 15 }, recentTitle: { color: colors.navy, fontWeight: '900', fontSize: 16, marginBottom: 8 }, recentRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, orderBadge: { backgroundColor: '#E4F5FF', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6 }, orderBadgeText: { color: colors.primary, fontWeight: '900', fontSize: 11 }, orderName: { color: colors.text, fontWeight: '800', fontSize: 13 }, orderMeta: { color: colors.muted, fontSize: 10, marginTop: 3 }, orderTotal: { color: colors.navy, fontWeight: '900', fontSize: 12 },
+  flex: { flex: 1 },
+  content: { padding: space.lg, paddingBottom: space.xxxl },
+  top: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingTop: space.sm },
+  sede: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: space.md, marginBottom: space.lg, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  block: { marginTop: space.md },
+  demo: { marginBottom: space.lg },
+  cta: { flexDirection: 'row', alignItems: 'center', gap: space.lg, borderRadius: radius.xl, padding: space.xl, ...shadow.md },
+  ctaIcon: { width: 48, height: 48, borderRadius: 15, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  ctaTitle: { color: '#FFFFFF', fontFamily: fonts.bold, fontSize: 18 },
+  ctaText: { color: colors.onNavyMuted, fontFamily: fonts.regular, fontSize: 13, marginTop: 2 },
+  pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
+  kpis: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  kpiSkeleton: { flex: 1, minWidth: '46%', height: 118, gap: 10, padding: space.lg, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  shortcuts: { flexDirection: 'row', gap: space.md },
+  shortcut: { flex: 1, alignItems: 'center', gap: space.sm, paddingVertical: space.lg, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  shortcutIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  recent: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
+  recentNumber: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.sm, backgroundColor: colors.primarySoft },
+  recentNumberText: { fontFamily: fonts.bold, fontSize: 12, color: colors.primary },
 });

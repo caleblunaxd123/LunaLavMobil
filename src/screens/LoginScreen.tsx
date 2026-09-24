@@ -1,43 +1,89 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Brand } from '../components/Brand';
-import { Field } from '../components/Field';
+import { useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
+import { Logo } from '../components/brand';
+import { AppText, Button, IconButton, InlineAlert, Screen, TextField } from '../components/ui';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
-import { colors } from '../theme/colors';
+import { colors, space } from '../theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-export function LoginScreen({ navigation }: Props) {
-  const [empresaSlug, setEmpresaSlug] = useState(''); const [usuario, setUsuario] = useState(''); const [password, setPassword] = useState('');
-  const { login, busy, error, clearError } = useAuthStore();
-  const valid = empresaSlug.trim().length >= 2 && usuario.trim().length >= 3 && password.length >= 4;
-  const submit = async () => { clearError(); if (valid) await login({ empresaSlug: empresaSlug.trim().toLowerCase(), usuario: usuario.trim(), password }); };
+export function LoginScreen({ navigation, route }: Props) {
+  const { login, busy, error, clearError, lastLogin } = useAuthStore();
+  const [empresaSlug, setEmpresaSlug] = useState(route.params?.empresaSlug ?? lastLogin?.empresaSlug ?? '');
+  const [usuario, setUsuario] = useState(route.params?.usuario ?? lastLogin?.usuario ?? '');
+  const [password, setPassword] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const usuarioRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
-  return <SafeAreaView style={styles.safe}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-      <Pressable onPress={() => navigation.goBack()} style={styles.back}><Ionicons name="arrow-back" size={23} color={colors.navy} /></Pressable><Brand />
-      <View style={styles.header}><Text style={styles.title}>Bienvenido de nuevo</Text><Text style={styles.subtitle}>Ingresa a tu lavandería con los datos de tu empresa.</Text></View>
-      <View style={styles.form}>
-        <Field label="Código de empresa" icon="business-outline" placeholder="ej. lavandaluna" value={empresaSlug} onChangeText={setEmpresaSlug} autoCorrect={false} />
-        <Text style={styles.help}>Es el nombre que aparece en app.lunalav.pe/<Text style={styles.helpStrong}>tu-empresa</Text></Text>
-        <Field label="Usuario" icon="person-outline" placeholder="Tu usuario" value={usuario} onChangeText={setUsuario} autoCorrect={false} />
-        <Field label="Contraseña" icon="lock-closed-outline" placeholder="Tu contraseña" value={password} onChangeText={setPassword} password onSubmitEditing={submit} />
-        {error && <View style={styles.errorBox}><Ionicons name="alert-circle" size={19} color={colors.danger} /><Text style={styles.errorText}>{error}</Text></View>}
-        <Pressable style={[styles.button, !valid && styles.disabled]} onPress={submit} disabled={!valid || busy}>{busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Ingresar</Text>}</Pressable>
-      </View>
-      <Pressable onPress={() => navigation.navigate('Trial')} style={styles.newAccount}><Text style={styles.newAccountText}>¿Aún no tienes cuenta? <Text style={styles.link}>Prueba LunaLav gratis</Text></Text></Pressable>
-      <View style={styles.security}><Ionicons name="shield-checkmark-outline" size={18} color={colors.success} /><Text style={styles.securityText}>Tu sesión se guarda cifrada en el dispositivo.</Text></View>
-    </ScrollView>
-  </KeyboardAvoidingView></SafeAreaView>;
+  const errors = {
+    empresa: empresaSlug.trim().length < 2 ? 'Ingresa el código de tu empresa.' : '',
+    usuario: usuario.trim().length < 3 ? 'Ingresa tu usuario.' : '',
+    password: password.length < 4 ? 'Ingresa tu contraseña.' : '',
+  };
+  const valid = !errors.empresa && !errors.usuario && !errors.password;
+
+  const submit = async () => {
+    setSubmitted(true);
+    clearError();
+    if (valid) await login({ empresaSlug: empresaSlug.trim().toLowerCase(), usuario: usuario.trim(), password });
+  };
+
+  const forgot = () => Alert.alert('¿Olvidaste tu contraseña?',
+    'Pide al administrador de tu lavandería que la restablezca desde Ajustes → Usuarios. Si eres el administrador, escríbenos a contacto@lunalav.pe.');
+
+  return (
+    <Screen edges={['top', 'bottom']}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        <View style={styles.top}>
+          <IconButton icon="arrow-back" label="Volver" onPress={navigation.goBack} />
+        </View>
+        <Logo width={230} style={styles.logo} />
+
+        <AppText variant="display" style={styles.title}>Inicia sesión</AppText>
+        <AppText variant="body">Usa los datos que te dio el administrador de tu lavandería.</AppText>
+
+        <View style={styles.form}>
+          <TextField label="Código de empresa" icon="business-outline" placeholder="ej. lavanderia-primavera"
+            value={empresaSlug} onChangeText={(v) => setEmpresaSlug(v.toLowerCase().replace(/\s/g, ''))} autoCorrect={false}
+            returnKeyType="next" onSubmitEditing={() => usuarioRef.current?.focus()}
+            error={submitted ? errors.empresa : ''} hint="Aparece en tu enlace web: app.lunalav.pe/tu-empresa" />
+          <TextField ref={usuarioRef} label="Usuario" icon="person-outline" placeholder="Tu usuario"
+            value={usuario} onChangeText={setUsuario} autoCorrect={false} autoComplete="username" textContentType="username"
+            returnKeyType="next" onSubmitEditing={() => passwordRef.current?.focus()} error={submitted ? errors.usuario : ''} />
+          <TextField ref={passwordRef} label="Contraseña" icon="lock-closed-outline" placeholder="Tu contraseña" password
+            value={password} onChangeText={setPassword} autoComplete="password" textContentType="password"
+            returnKeyType="go" onSubmitEditing={submit} error={submitted ? errors.password : ''} />
+          <Pressable onPress={forgot} hitSlop={8} style={styles.forgot} accessibilityRole="button">
+            <AppText variant="captionStrong" color={colors.primary}>¿Olvidaste tu contraseña?</AppText>
+          </Pressable>
+          {!!error && <InlineAlert title="No pudimos iniciar sesión" text={error} />}
+          <Button label="Ingresar" onPress={submit} busy={busy} />
+        </View>
+
+        <View style={styles.footer}>
+          <AppText variant="body" align="center">¿Aún no usas LunaLav?</AppText>
+          <Button label="Crear cuenta gratis" variant="ghost" iconRight="arrow-forward" onPress={() => navigation.navigate('Registro')} />
+        </View>
+        <View style={styles.security}>
+          <Ionicons name="shield-checkmark-outline" size={16} color={colors.success} />
+          <AppText variant="caption">Tu sesión se guarda cifrada en este dispositivo.</AppText>
+        </View>
+      </ScrollView>
+    </Screen>
+  );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background }, flex: { flex: 1 }, content: { flexGrow: 1, padding: 24 }, back: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, marginBottom: 24 },
-  header: { marginTop: 52, marginBottom: 30 }, title: { color: colors.navy, fontSize: 31, fontWeight: '900', letterSpacing: -0.7 }, subtitle: { color: colors.muted, fontSize: 15, lineHeight: 23, marginTop: 8 }, form: { gap: 17 }, help: { color: colors.muted, fontSize: 12, marginTop: -10, marginLeft: 4 }, helpStrong: { color: colors.primary, fontWeight: '800' },
-  button: { height: 56, borderRadius: 17, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 4 }, disabled: { opacity: 0.45 }, buttonText: { color: '#FFFFFF', fontWeight: '900', fontSize: 16 }, errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 12, backgroundColor: '#FFF0F3' }, errorText: { color: colors.danger, flex: 1, lineHeight: 19 },
-  newAccount: { paddingVertical: 24, alignItems: 'center' }, newAccountText: { color: colors.muted }, link: { color: colors.primary, fontWeight: '900' }, security: { marginTop: 'auto', flexDirection: 'row', gap: 7, justifyContent: 'center', alignItems: 'center' }, securityText: { color: colors.muted, fontSize: 12 },
+  content: { flexGrow: 1, padding: space.xl },
+  top: { flexDirection: 'row', alignItems: 'center' },
+  logo: { alignSelf: 'center', marginTop: space.lg },
+  title: { marginTop: space.xxl, marginBottom: space.xs },
+  form: { gap: space.lg, marginTop: space.xxl },
+  forgot: { alignSelf: 'flex-end', marginTop: -space.sm },
+  footer: { marginTop: space.xxl, alignItems: 'center' },
+  security: { marginTop: 'auto', paddingTop: space.xl, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' },
 });

@@ -1,102 +1,155 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { getMovimientos } from '../api/operationsApi';
-import { Card, Fab, Message, ScreenTitle, StateView } from '../components/ui';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useMemo, useRef, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { getMovimientos, type MovimientoCaja } from '../api/operationsApi';
+import {
+  AppText, Button, Card, EmptyState, ErrorState, ListSkeleton, LockedState, Pager, Screen, SegmentedControl, TabHeader,
+} from '../components/ui';
+import { usePagination } from '../hooks/usePagination';
 import { usePermissions } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
-import { colors } from '../theme/colors';
+import { colors, fonts, radius, space } from '../theme';
 import { isoDate, methodLabel, money, time } from '../utils/format';
 
+type Filtro = 'todos' | 'ingresos' | 'gastos';
+
 export function CajaScreen({ navigation }: TabScreenProps<'Caja'>) {
-  const sedeId = useAuthStore((state) => state.session?.usuario.sedeId);
+  const sedeId = useAuthStore((s) => s.session?.usuario.sedeId);
   const can = usePermissions();
+  const listRef = useRef<FlatList>(null);
   const [day, setDay] = useState(() => new Date());
+  const [filtro, setFiltro] = useState<Filtro>('todos');
   const fecha = isoDate(day);
   const isToday = fecha === isoDate(new Date());
   const allowed = can('CAJA');
   const query = useQuery({ queryKey: ['caja', sedeId, fecha], queryFn: () => getMovimientos(fecha), enabled: allowed });
+  const movs = useMemo(() => query.data ?? [], [query.data]);
 
   const totals = useMemo(() => {
-    const movs = query.data ?? [];
-    const sum = (filter: (m: (typeof movs)[number]) => boolean) => movs.filter(filter).reduce((acc, m) => acc + m.monto, 0);
-    const ingresos = sum((m) => m.tipo === 'INGRESO');
-    const gastos = sum((m) => m.tipo !== 'INGRESO');
-    const efectivo = sum((m) => m.tipo === 'INGRESO' && m.metodoPago === 'EFECTIVO') - sum((m) => m.tipo !== 'INGRESO' && m.metodoPago === 'EFECTIVO');
-    return { ingresos, gastos, efectivo };
-  }, [query.data]);
+    const sum = (f: (m: MovimientoCaja) => boolean) => movs.filter(f).reduce((acc, m) => acc + m.monto, 0);
+    const isIn = (m: MovimientoCaja) => m.tipo === 'INGRESO';
+    return {
+      ingresos: sum(isIn), gastos: sum((m) => !isIn(m)),
+      efectivo: sum((m) => isIn(m) && m.metodoPago === 'EFECTIVO') - sum((m) => !isIn(m) && m.metodoPago === 'EFECTIVO'),
+      digital: sum((m) => isIn(m) && m.metodoPago !== 'EFECTIVO'),
+      countIn: movs.filter(isIn).length, countOut: movs.filter((m) => !isIn(m)).length,
+    };
+  }, [movs]);
 
-  const shift = (days: number) => setDay((d) => { const next = new Date(d); next.setDate(d.getDate() + days); return next; });
+  const filtered = useMemo(() => movs.filter((m) => filtro === 'todos' || (filtro === 'ingresos') === (m.tipo === 'INGRESO')), [movs, filtro]);
+  const { page, setPage, pageItems, total, pageSize } = usePagination(filtered, 15, `${fecha}-${filtro}`);
+  const shift = (days: number) => setDay((d) => { const n = new Date(d); n.setDate(d.getDate() + days); return n; });
 
-  if (!allowed) return <SafeAreaView style={styles.safe} edges={['top']}><View style={styles.content}>
-    <ScreenTitle title="Caja" icon="wallet-outline" />
-    <Message icon="lock-closed-outline" title="Módulo no incluido" text="Tu usuario no tiene permiso para acceder a caja." />
-  </View></SafeAreaView>;
+  if (!allowed) return <Screen><View style={styles.content}><TabHeader title="Caja" /><LockedState module="ver la caja" /></View></Screen>;
 
-  return <SafeAreaView style={styles.safe} edges={['top']}>
-    <FlatList
-      data={query.data ?? []}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
-      ListHeaderComponent={<>
-        <ScreenTitle title="Caja" icon="wallet-outline" />
-        <View style={styles.dayBar}>
-          <Pressable onPress={() => shift(-1)} hitSlop={10} style={styles.dayButton} accessibilityLabel="Día anterior"><Ionicons name="chevron-back" size={20} color={colors.navy} /></Pressable>
-          <Text style={styles.dayText}>{isToday ? 'Hoy' : day.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
-          <Pressable onPress={() => shift(1)} disabled={isToday} hitSlop={10} style={[styles.dayButton, isToday && styles.disabled]} accessibilityLabel="Día siguiente"><Ionicons name="chevron-forward" size={20} color={colors.navy} /></Pressable>
-        </View>
-        <View style={styles.stats}>
-          <Stat label="Ingresos" value={money(totals.ingresos)} color={colors.success} />
-          <Stat label="Gastos" value={money(totals.gastos)} color={colors.danger} />
-          <Stat label="Efectivo neto" value={money(totals.efectivo)} color={colors.navy} />
-        </View>
-      </>}
-      ListEmptyComponent={<StateView loading={query.isLoading} error={query.isError} empty
-        emptyTitle="Sin movimientos" emptyText={isToday ? 'Los cobros y gastos de hoy aparecerán aquí.' : 'No hubo movimientos en este día.'} />}
-      renderItem={({ item: m }) => {
-        const ingreso = m.tipo === 'INGRESO';
-        const tint = ingreso ? colors.success : colors.danger;
-        return <Card style={styles.row} onPress={m.pedidoId && can('PEDIDOS') ? () => navigation.navigate('PedidoDetalle', { id: m.pedidoId! }) : undefined}>
-          <View style={[styles.badge, { backgroundColor: ingreso ? '#E8FBF6' : '#FFF1F2' }]}>
-            <Ionicons name={ingreso ? 'arrow-down-outline' : 'arrow-up-outline'} color={tint} size={20} />
+  return (
+    <Screen>
+      <FlatList
+        ref={listRef}
+        data={pageItems}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
+        ListHeaderComponent={<View style={styles.header}>
+          <TabHeader title="Caja" subtitle="Cobros y gastos de tu sede"
+            right={isToday && <Button label="Gasto" icon="remove" size="sm" variant="secondary" onPress={() => navigation.navigate('NuevoGasto')} />} />
+          <View style={styles.dayBar}>
+            <DayButton icon="chevron-back" label="Día anterior" onPress={() => shift(-1)} />
+            <View style={styles.dayCenter}>
+              <AppText variant="subheading">{isToday ? 'Hoy' : day.toLocaleDateString('es-PE', { weekday: 'long' })}</AppText>
+              <AppText variant="caption">{day.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</AppText>
+            </View>
+            <DayButton icon="chevron-forward" label="Día siguiente" onPress={() => shift(1)} disabled={isToday} />
           </View>
-          <View style={styles.body}>
-            <Text style={styles.title} numberOfLines={1}>{m.descripcion || (m.pedidoNumero ? `Pedido #${m.pedidoNumero}` : m.tipoGastoNombre || m.tipo)}</Text>
-            <Text style={styles.meta}>{methodLabel(m.metodoPago)} · {time(m.fecha)}{m.usuarioNombre ? ` · ${m.usuarioNombre}` : ''}</Text>
-            {!!(m.clienteNombre || m.tipoGastoNombre) && <Text style={styles.sub}>{m.clienteNombre || m.tipoGastoNombre}</Text>}
-          </View>
-          <Text style={[styles.amount, { color: tint }]}>{ingreso ? '+' : '-'} {money(m.monto)}</Text>
-        </Card>;
-      }}
-    />
-    {isToday && <Fab icon="remove-circle-outline" label="Registrar gasto" onPress={() => navigation.navigate('NuevoGasto')} />}
-  </SafeAreaView>;
+          <LinearGradient colors={[colors.navy, colors.navyGradientEnd]} style={styles.hero}>
+            <AppText style={styles.heroLabel}>Efectivo esperado en caja</AppText>
+            <AppText style={styles.heroValue}>{money(totals.efectivo)}</AppText>
+            <View style={styles.heroRow}>
+              <HeroStat label="Ingresos" value={money(totals.ingresos)} hint={`${totals.countIn} cobros`} />
+              <View style={styles.heroDivider} />
+              <HeroStat label="Gastos" value={money(totals.gastos)} hint={`${totals.countOut} registros`} />
+              <View style={styles.heroDivider} />
+              <HeroStat label="Digital" value={money(totals.digital)} hint="Yape, Plin, POS…" />
+            </View>
+          </LinearGradient>
+          <SegmentedControl<Filtro> value={filtro} onChange={setFiltro} segments={[
+            { value: 'todos', label: 'Todos', count: movs.length },
+            { value: 'ingresos', label: 'Ingresos', count: totals.countIn },
+            { value: 'gastos', label: 'Gastos', count: totals.countOut },
+          ]} />
+        </View>}
+        ListEmptyComponent={query.isLoading ? <ListSkeleton /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} />
+          : <EmptyState icon="wallet-outline" title="Sin movimientos"
+            text={isToday ? 'Los cobros de pedidos y los gastos de hoy aparecerán aquí.' : 'No hubo movimientos en este día.'}
+            actionLabel={isToday ? 'Registrar un gasto' : undefined} onAction={() => navigation.navigate('NuevoGasto')} />}
+        renderItem={({ item: m }) => {
+          const ingreso = m.tipo === 'INGRESO';
+          const tint = ingreso ? colors.success : colors.danger;
+          const open = m.pedidoId && can('PEDIDOS') ? () => navigation.navigate('PedidoDetalle', { id: m.pedidoId! }) : undefined;
+          return (
+            <Card onPress={open} style={styles.row}>
+              <View style={[styles.movIcon, { backgroundColor: ingreso ? colors.successSoft : colors.dangerSoft }]}>
+                <Ionicons name={ingreso ? 'arrow-down' : 'arrow-up'} size={18} color={tint} />
+              </View>
+              <View style={styles.body}>
+                <AppText variant="subheading" numberOfLines={1}>
+                  {m.pedidoNumero ? `Pedido #${m.pedidoNumero}` : m.descripcion || m.tipoGastoNombre || (ingreso ? 'Ingreso' : 'Gasto')}
+                </AppText>
+                <AppText variant="caption" numberOfLines={1}>
+                  {[time(m.fecha), methodLabel(m.metodoPago), m.clienteNombre ?? m.usuarioNombre].filter(Boolean).join(' · ')}
+                </AppText>
+              </View>
+              <AppText variant="subheading" color={tint}>{ingreso ? '+' : '−'}{money(m.monto)}</AppText>
+            </Card>
+          );
+        }}
+        ListFooterComponent={<Pager page={page} pageSize={pageSize} total={total}
+          onChange={(p) => { setPage(p); listRef.current?.scrollToOffset({ offset: 0, animated: true }); }} />}
+      />
+    </Screen>
+  );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return <View style={styles.stat}><Text style={styles.statLabel}>{label}</Text><Text style={[styles.statValue, { color }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text></View>;
+function DayButton({ icon, label, onPress, disabled }: { icon: 'chevron-back' | 'chevron-forward'; label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label}
+      style={({ pressed }) => [styles.dayButton, disabled && styles.disabled, pressed && styles.pressed]}>
+      <Ionicons name={icon} size={20} color={colors.text} />
+    </Pressable>
+  );
+}
+
+function HeroStat({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <View style={styles.heroStat}>
+      <AppText style={styles.heroStatLabel}>{label}</AppText>
+      <AppText style={styles.heroStatValue} numberOfLines={1} adjustsFontSizeToFit>{value}</AppText>
+      <AppText style={styles.heroStatHint} numberOfLines={1}>{hint}</AppText>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 96, flexGrow: 1 },
-  dayBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 6, marginBottom: 12 },
-  dayButton: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F8FE' },
-  disabled: { opacity: 0.35 },
-  dayText: { color: colors.navy, fontWeight: '900', fontSize: 14, textTransform: 'capitalize' },
-  stats: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  stat: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 12 },
-  statLabel: { color: colors.muted, fontSize: 11, fontWeight: '700' },
-  statValue: { fontSize: 15, fontWeight: '900', marginTop: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  badge: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  body: { flex: 1 },
-  title: { color: colors.text, fontWeight: '900', fontSize: 14 },
-  meta: { color: colors.muted, fontSize: 11, marginTop: 3 },
-  sub: { color: '#94A7B8', fontSize: 10, marginTop: 3 },
-  amount: { fontSize: 12, fontWeight: '900' },
+  content: { padding: space.lg, paddingBottom: space.xxxl, flexGrow: 1 },
+  header: { gap: space.md, marginBottom: space.md },
+  dayBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: 6 },
+  dayCenter: { flex: 1, alignItems: 'center' },
+  dayButton: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceMuted },
+  disabled: { opacity: 0.3 },
+  pressed: { opacity: 0.7 },
+  hero: { borderRadius: radius.xl, padding: space.xl },
+  heroLabel: { color: colors.onNavyMuted, fontFamily: fonts.medium, fontSize: 13 },
+  heroValue: { color: '#FFFFFF', fontFamily: fonts.extrabold, fontSize: 32, letterSpacing: -0.8, marginTop: 2 },
+  heroRow: { flexDirection: 'row', marginTop: space.lg },
+  heroDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: space.md },
+  heroStat: { flex: 1 },
+  heroStatLabel: { color: colors.onNavyMuted, fontFamily: fonts.medium, fontSize: 11.5 },
+  heroStatValue: { color: '#FFFFFF', fontFamily: fonts.bold, fontSize: 15, marginTop: 2 },
+  heroStatHint: { color: '#7FA6CC', fontFamily: fonts.regular, fontSize: 10.5, marginTop: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm, padding: space.md },
+  movIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  body: { flex: 1, gap: 2 },
 });

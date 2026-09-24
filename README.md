@@ -28,6 +28,28 @@ Aplicación móvil nativa de LunaLav, construida con React Native, Expo y TypeSc
 - selección de sede para usuarios sin sede fija y cambio de sede para administradores;
 - sección «Más» con perfil, accesos a los módulos web y cierre de sesión con confirmación.
 
+## Marca
+
+El logotipo oficial está en `assets/brand/` (SVG y PNG, con versión para fondos oscuros). Los
+íconos de iOS y Android, el splash y el favicon se generan a partir de él. Detalles y colores en
+`assets/brand/README.md`.
+
+## Tercer hito: diseño profesional y experiencia de uso
+
+- sistema de diseño propio (`src/theme`, `src/components/ui`) alineado con LunaLav web: tipografía
+  Montserrat, azul marino `#053465` y azul cielo; botones, campos con error por campo, tarjetas,
+  insignias de estado, hojas inferiores, avisos flotantes, esqueletos de carga y estados vacíos útiles;
+- bienvenida con acciones siempre visibles; inicio de sesión que recuerda empresa y usuario;
+- **registro por pasos** (lavandería → cuenta → plan → confirmación) con código de empresa sugerido y
+  verificado en vivo, medidor de contraseña y resumen editable (ver `docs/API_REGISTRO.md`);
+- listados **paginados** con tope: pedidos (15 por página, en el servidor), clientes (hasta 200,
+  paginados en el móvil), caja por día e inventario;
+- inicio con indicadores comparados con ayer que abren el filtro correspondiente;
+- nuevo pedido en 3 pasos con total siempre visible; detalle con línea de tiempo, cobro y entrega en
+  hojas inferiores (incluye «lo recoge otra persona») y aviso por WhatsApp con mensaje listo;
+- inventario: stock bajo, favoritos, compras (que también registran el gasto en caja) y consumo;
+- pedidos atrasados resaltados; confirmaciones antes de acciones irreversibles.
+
 ## Ejecutar
 
 ```powershell
@@ -48,6 +70,8 @@ npm run android
 - Demo aislada: `https://demo.lunalav.pe/api`
 
 Los orígenes pueden cambiarse con `EXPO_PUBLIC_API_ORIGIN` y `EXPO_PUBLIC_DEMO_API_ORIGIN`.
+
+Versión web (útil para revisar el diseño en el navegador): `npm run web`.
 
 ## Calidad
 

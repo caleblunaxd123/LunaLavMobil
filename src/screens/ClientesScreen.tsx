@@ -1,66 +1,72 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { getClientes } from '../api/operationsApi';
-import { Card, Fab, Message, ScreenTitle, SearchBar, StateView } from '../components/ui';
+import { useRef, useState } from 'react';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { CLIENTES_LIMIT, getClientes } from '../api/operationsApi';
+import {
+  AppText, Avatar, Badge, Button, Card, EmptyState, ErrorState, ListSkeleton, LockedState, Pager, Screen, SearchBar, TabHeader,
+} from '../components/ui';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { usePagination } from '../hooks/usePagination';
 import { usePermissions } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
-import { colors } from '../theme/colors';
+import { colors, space } from '../theme';
 
 export function ClientesScreen({ navigation }: TabScreenProps<'Clientes'>) {
-  const negocioId = useAuthStore((state) => state.session?.usuario.negocioId);
+  const negocioId = useAuthStore((s) => s.session?.usuario.negocioId);
   const can = usePermissions();
+  const listRef = useRef<FlatList>(null);
   const [texto, setTexto] = useState('');
   const term = useDebouncedValue(texto.trim());
   const allowed = can('CLIENTES');
   const query = useQuery({ queryKey: ['clientes', negocioId, term], queryFn: () => getClientes(term), enabled: allowed });
+  const clientes = query.data ?? [];
+  const { page, setPage, pageItems, total, pageSize } = usePagination(clientes, 15, term);
+  const capped = clientes.length >= CLIENTES_LIMIT;
 
-  if (!allowed) return <SafeAreaView style={styles.safe} edges={['top']}><View style={styles.content}>
-    <ScreenTitle title="Clientes" icon="people-outline" />
-    <Message icon="lock-closed-outline" title="Módulo no incluido" text="Tu usuario no tiene permiso para acceder a clientes." />
-  </View></SafeAreaView>;
+  const nuevo = () => navigation.navigate('ClienteForm');
+  if (!allowed) return <Screen><View style={styles.content}><TabHeader title="Clientes" /><LockedState module="ver clientes" /></View></Screen>;
 
-  return <SafeAreaView style={styles.safe} edges={['top']}>
-    <FlatList
-      data={query.data ?? []}
-      keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
-      ListHeaderComponent={<>
-        <ScreenTitle title="Clientes" icon="people-outline" />
-        <SearchBar value={texto} onChangeText={setTexto} placeholder="Nombre, celular o DNI..." />
-      </>}
-      ListEmptyComponent={<StateView loading={query.isLoading} error={query.isError} empty
-        emptyTitle={term ? 'Sin coincidencias' : 'Aún no hay clientes'}
-        emptyText={term ? 'Revisa el nombre o registra un cliente nuevo.' : 'Registra tu primer cliente con el botón de abajo.'} />}
-      renderItem={({ item: c }) => <Card onPress={() => navigation.navigate('ClienteDetalle', { id: c.id })} style={styles.row}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>{c.nombre.charAt(0).toUpperCase()}</Text></View>
-        <View style={styles.body}>
-          <Text style={styles.title} numberOfLines={1}>{c.nombre}</Text>
-          <Text style={styles.meta}>{c.celular || 'Sin celular'}{c.dni ? ` · DNI ${c.dni}` : ''}</Text>
-          {!!c.direccion && <Text style={styles.sub} numberOfLines={1}>{c.direccion}</Text>}
-        </View>
-        {c.puntos > 0 ? <Text style={styles.points}>{c.puntos} pts</Text> : <Ionicons name="chevron-forward" size={18} color="#9AAEBF" />}
-      </Card>}
-    />
-    <Fab icon="person-add-outline" label="Nuevo cliente" onPress={() => navigation.navigate('ClienteForm')} />
-  </SafeAreaView>;
+  return (
+    <Screen>
+      <FlatList
+        ref={listRef}
+        data={pageItems}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
+        ListHeaderComponent={<View style={styles.header}>
+          <TabHeader title="Clientes" subtitle={query.data ? `${total}${capped ? '+' : ''} ${term ? 'resultados' : 'clientes'}` : 'Cargando…'}
+            right={<Button label="Nuevo" icon="person-add-outline" size="sm" onPress={nuevo} />} />
+          <SearchBar value={texto} onChangeText={setTexto} placeholder="Buscar por nombre, celular o DNI" />
+        </View>}
+        ListEmptyComponent={query.isLoading ? <ListSkeleton /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} />
+          : <EmptyState icon={term ? 'search-outline' : 'people-outline'} title={term ? 'No encontramos ese cliente' : 'Aún no tienes clientes'}
+            text={term ? 'Revisa cómo está escrito o regístralo como cliente nuevo.' : 'Registra a tus clientes para tener su historial y contacto a la mano.'}
+            actionLabel="Registrar cliente" onAction={nuevo} />}
+        renderItem={({ item: c }) => (
+          <Card onPress={() => navigation.navigate('ClienteDetalle', { id: c.id })} style={styles.row} accessibilityLabel={c.nombre}>
+            <Avatar name={c.nombre} tone="teal" />
+            <View style={styles.body}>
+              <AppText variant="subheading" numberOfLines={1}>{c.nombre}</AppText>
+              <AppText variant="caption" numberOfLines={1}>{[c.celular, c.dni && `DNI ${c.dni}`].filter(Boolean).join(' · ') || 'Sin datos de contacto'}</AppText>
+            </View>
+            {c.puntos > 0 && <Badge label={`${c.puntos} pts`} tone="violet" dot={false} />}
+            <Ionicons name="chevron-forward" size={18} color={colors.placeholder} />
+          </Card>
+        )}
+        ListFooterComponent={<Pager page={page} pageSize={pageSize} total={total} capped={capped}
+          onChange={(p) => { setPage(p); listRef.current?.scrollToOffset({ offset: 0, animated: true }); }} />}
+      />
+    </Screen>
+  );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 96, flexGrow: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#E8FBF6', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: colors.success, fontWeight: '900', fontSize: 17 },
-  body: { flex: 1 },
-  title: { color: colors.text, fontWeight: '900', fontSize: 14 },
-  meta: { color: colors.muted, fontSize: 11, marginTop: 3 },
-  sub: { color: '#94A7B8', fontSize: 10, marginTop: 3 },
-  points: { color: colors.violet, fontSize: 11, fontWeight: '900', backgroundColor: '#F1EBFF', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10 },
+  content: { padding: space.lg, paddingBottom: space.xxxl, flexGrow: 1 },
+  header: { gap: space.md, marginBottom: space.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm, padding: space.md },
+  body: { flex: 1, gap: 2 },
 });
