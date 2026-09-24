@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { getDashboard } from '../api/operationsApi';
+import { LogoMark } from '../components/brand';
 import { AppText, Avatar, Card, Divider, ErrorState, InlineAlert, Kpi, Screen, Section, Skeleton } from '../components/ui';
 import { usePermissions, type Modulo } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
@@ -46,6 +47,7 @@ export function DashboardScreen({ navigation }: TabScreenProps<'Inicio'>) {
       <ScrollView contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={dashboard.isRefetching} onRefresh={() => void dashboard.refetch()} tintColor={colors.primary} />}>
         <View style={styles.top}>
+          <LogoMark size={46} />
           <View style={styles.flex}>
             <AppText variant="caption">{greeting()},</AppText>
             <AppText variant="title" numberOfLines={1}>{usuario.nombreCompleto.split(' ')[0]}</AppText>
@@ -67,7 +69,7 @@ export function DashboardScreen({ navigation }: TabScreenProps<'Inicio'>) {
 
         {can('REGISTRAR') && <Pressable onPress={() => navigation.navigate('NuevoPedido')} accessibilityRole="button" accessibilityLabel="Registrar nuevo pedido">
           {({ pressed }) => (
-            <LinearGradient colors={[colors.navy, '#0B4F8A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.cta, pressed && styles.pressed]}>
+            <LinearGradient colors={[colors.navy, colors.navyGradientEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.cta, pressed && styles.pressed]}>
               <View style={styles.ctaIcon}><Ionicons name="add" size={28} color={colors.navy} /></View>
               <View style={styles.flex}>
                 <AppText style={styles.ctaTitle}>Nuevo pedido</AppText>
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
   cta: { flexDirection: 'row', alignItems: 'center', gap: space.lg, borderRadius: radius.xl, padding: space.xl, ...shadow.md },
   ctaIcon: { width: 48, height: 48, borderRadius: 15, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   ctaTitle: { color: '#FFFFFF', fontFamily: fonts.bold, fontSize: 18 },
-  ctaText: { color: '#A9C8E6', fontFamily: fonts.regular, fontSize: 13, marginTop: 2 },
+  ctaText: { color: colors.onNavyMuted, fontFamily: fonts.regular, fontSize: 13, marginTop: 2 },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   kpis: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
   kpiSkeleton: { flex: 1, minWidth: '46%', height: 118, gap: 10, padding: space.lg, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },

@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from './src/api/queryClient';
+import { LogoMark } from './src/components/brand';
 import { ToastHost } from './src/components/ui';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
@@ -27,7 +28,8 @@ export default function App() {
   if (!hydrated || (!fontsLoaded && !fontError)) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <LogoMark size={120} />
+        <ActivityIndicator color={colors.primary} style={styles.spinner} />
       </View>
     );
   }
@@ -44,5 +46,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  // Mismo fondo blanco y símbolo que el splash nativo, para que la transición sea continua.
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' },
+  spinner: { marginTop: 28 },
 });

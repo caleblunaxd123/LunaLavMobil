@@ -1,15 +1,17 @@
 /**
- * Paleta de LunaLav Móvil, alineada con la web (styles.scss): azul marino #053465 y azul
- * cielo #249FE6. El azul de acción es un tono más profundo para cumplir contraste AA con texto blanco.
+ * Paleta de LunaLav, tomada del logotipo oficial: azul marino #00245E y azul cielo #009AFE.
+ * El azul de acción (#0074CC) es el mismo tono, más profundo, para cumplir contraste AA con texto blanco.
  */
 export const colors = {
   // Marca
-  navy: '#053465',
-  navySoft: '#0B4F8A',
-  primary: '#0F76C8',
-  primaryDark: '#0B5EA3',
-  sky: '#249FE6',
-  primarySoft: '#E8F4FD',
+  navy: '#00245E',
+  navySoft: '#0A3D8F',
+  navyGradientEnd: '#003C8C',
+  onNavyMuted: '#A8C8EE',
+  primary: '#0074CC',
+  primaryDark: '#005FA8',
+  sky: '#009AFE',
+  primarySoft: '#E6F4FF',
   teal: '#21BE91',
   tealSoft: '#E6F8F1',
   violet: '#7C5CFA',
@@ -36,8 +38,8 @@ export const colors = {
   warningSoft: '#FEF4E6',
   danger: '#D92D20',
   dangerSoft: '#FEF1F0',
-  info: '#0F76C8',
-  infoSoft: '#E8F4FD',
+  info: '#0074CC',
+  infoSoft: '#E6F4FF',
 
   // Compatibilidad con nombres usados en pantallas previas
   mint: '#21BE91',

@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Fragment } from 'react';
 import { Alert, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Logo } from '../components/brand';
 import { AppText, Avatar, Badge, Card, Divider, ListItem, Screen, Section, TabHeader } from '../components/ui';
 import { usePermissions, type Modulo } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
@@ -86,7 +87,10 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
             <ListItem title="Cerrar sesión" danger leading={<Icon name="log-out-outline" tint={colors.danger} />} onPress={confirmLogout} />
           </Card>
         </Section>
-        <AppText variant="caption" align="center" style={styles.version}>LunaLav Móvil · versión 1.0</AppText>
+        <View style={styles.footer}>
+          <Logo width={170} />
+          <AppText variant="caption" align="center">LunaLav Móvil · versión 1.0</AppText>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -99,5 +103,5 @@ const styles = StyleSheet.create({
   badges: { flexDirection: 'row', gap: 6, marginTop: 6 },
   icon: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   note: { marginTop: space.sm, paddingHorizontal: space.xs },
-  version: { marginTop: space.xxl },
+  footer: { alignItems: 'center', gap: space.sm, marginTop: space.xxl },
 });

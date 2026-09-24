@@ -3,7 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Brand } from '../components/Brand';
+import { Logo } from '../components/brand';
 import { AppText, Button, InlineAlert } from '../components/ui';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -23,9 +23,9 @@ export function WelcomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={[colors.navy, '#0B4F8A']} style={styles.hero}>
+      <LinearGradient colors={[colors.navy, colors.navyGradientEnd]} style={styles.hero}>
         <SafeAreaView edges={['top']}>
-          <View style={styles.heroTop}><Brand light /></View>
+          <View style={styles.heroTop}><Logo width={250} variant="white" /></View>
           <View style={styles.preview}>
             <PreviewRow icon="checkmark-circle" tint="#34D399" title="Pedido #1024 listo" meta="WhatsApp enviado a María" />
             <PreviewRow icon="trending-up" tint={colors.sky} title="S/ 1,280.50 hoy" meta="32 pedidos · 5 por entregar" />
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   preview: { marginTop: space.lg, gap: space.sm },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10 },
   previewTitle: { color: '#FFFFFF', fontFamily: fonts.semibold, fontSize: 14 },
-  previewMeta: { color: '#A9C8E6', fontFamily: fonts.regular, fontSize: 12 },
+  previewMeta: { color: colors.onNavyMuted, fontFamily: fonts.regular, fontSize: 12 },
   sheet: { flex: 1, backgroundColor: colors.background, marginTop: -24, borderTopLeftRadius: 28, borderTopRightRadius: 28, ...shadow.md },
   content: { padding: space.xl, paddingTop: space.xxl, paddingBottom: space.lg },
   footer: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.sm },

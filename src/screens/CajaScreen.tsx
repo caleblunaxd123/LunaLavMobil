@@ -64,7 +64,7 @@ export function CajaScreen({ navigation }: TabScreenProps<'Caja'>) {
             </View>
             <DayButton icon="chevron-forward" label="Día siguiente" onPress={() => shift(1)} disabled={isToday} />
           </View>
-          <LinearGradient colors={[colors.navy, '#0B4F8A']} style={styles.hero}>
+          <LinearGradient colors={[colors.navy, colors.navyGradientEnd]} style={styles.hero}>
             <AppText style={styles.heroLabel}>Efectivo esperado en caja</AppText>
             <AppText style={styles.heroValue}>{money(totals.efectivo)}</AppText>
             <View style={styles.heroRow}>
@@ -141,12 +141,12 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.3 },
   pressed: { opacity: 0.7 },
   hero: { borderRadius: radius.xl, padding: space.xl },
-  heroLabel: { color: '#A9C8E6', fontFamily: fonts.medium, fontSize: 13 },
+  heroLabel: { color: colors.onNavyMuted, fontFamily: fonts.medium, fontSize: 13 },
   heroValue: { color: '#FFFFFF', fontFamily: fonts.extrabold, fontSize: 32, letterSpacing: -0.8, marginTop: 2 },
   heroRow: { flexDirection: 'row', marginTop: space.lg },
   heroDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: space.md },
   heroStat: { flex: 1 },
-  heroStatLabel: { color: '#A9C8E6', fontFamily: fonts.medium, fontSize: 11.5 },
+  heroStatLabel: { color: colors.onNavyMuted, fontFamily: fonts.medium, fontSize: 11.5 },
   heroStatValue: { color: '#FFFFFF', fontFamily: fonts.bold, fontSize: 15, marginTop: 2 },
   heroStatHint: { color: '#7FA6CC', fontFamily: fonts.regular, fontSize: 10.5, marginTop: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm, padding: space.md },

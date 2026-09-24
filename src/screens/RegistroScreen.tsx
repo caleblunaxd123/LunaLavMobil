@@ -9,6 +9,7 @@ import {
 import {
   AppText, BottomBar, Button, Card, Checkbox, InlineAlert, Screen, StackHeader, Steps, TextField,
 } from '../components/ui';
+import { LogoMark } from '../components/brand';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -275,8 +276,11 @@ function Success({ result, slug, usuario, entering, onEnter, onClose }: {
   return (
     <Screen edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.success}>
-        <View style={[styles.successIcon, { backgroundColor: created ? colors.successSoft : colors.primarySoft }]}>
-          <Ionicons name={created ? 'checkmark-circle' : 'paper-plane'} size={46} color={created ? colors.success : colors.primary} />
+        <View>
+          <LogoMark size={96} />
+          <View style={[styles.successBadge, { backgroundColor: created ? colors.success : colors.primary }]}>
+            <Ionicons name={created ? 'checkmark' : 'paper-plane'} size={20} color="#FFFFFF" />
+          </View>
         </View>
         <AppText variant="display" align="center">{created ? '¡Tu lavandería está lista!' : 'Recibimos tu solicitud'}</AppText>
         {created ? <>
@@ -325,7 +329,7 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md, paddingVertical: 5 },
   summaryValue: { flex: 1, textAlign: 'right' },
   success: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: space.xxl, gap: space.lg },
-  successIcon: { width: 92, height: 92, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  successBadge: { position: 'absolute', right: -4, bottom: -4, width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: colors.background, alignItems: 'center', justifyContent: 'center' },
   credentials: { alignSelf: 'stretch' },
   fullWidth: { alignSelf: 'stretch' },
 });

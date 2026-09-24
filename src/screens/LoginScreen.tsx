@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
-import { Brand } from '../components/Brand';
+import { Logo } from '../components/brand';
 import { AppText, Button, IconButton, InlineAlert, Screen, TextField } from '../components/ui';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -40,9 +40,8 @@ export function LoginScreen({ navigation, route }: Props) {
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.top}>
           <IconButton icon="arrow-back" label="Volver" onPress={navigation.goBack} />
-          <Brand compact />
-          <View style={styles.spacer} />
         </View>
+        <Logo width={230} style={styles.logo} />
 
         <AppText variant="display" style={styles.title}>Inicia sesión</AppText>
         <AppText variant="body">Usa los datos que te dio el administrador de tu lavandería.</AppText>
@@ -80,9 +79,9 @@ export function LoginScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   content: { flexGrow: 1, padding: space.xl },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  spacer: { width: 44 },
-  title: { marginTop: space.xxxl, marginBottom: space.xs },
+  top: { flexDirection: 'row', alignItems: 'center' },
+  logo: { alignSelf: 'center', marginTop: space.lg },
+  title: { marginTop: space.xxl, marginBottom: space.xs },
   form: { gap: space.lg, marginTop: space.xxl },
   forgot: { alignSelf: 'flex-end', marginTop: -space.sm },
   footer: { marginTop: space.xxl, alignItems: 'center' },

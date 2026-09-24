@@ -28,6 +28,12 @@ Aplicación móvil nativa de LunaLav, construida con React Native, Expo y TypeSc
 - selección de sede para usuarios sin sede fija y cambio de sede para administradores;
 - sección «Más» con perfil, accesos a los módulos web y cierre de sesión con confirmación.
 
+## Marca
+
+El logotipo oficial está en `assets/brand/` (SVG y PNG, con versión para fondos oscuros). Los
+íconos de iOS y Android, el splash y el favicon se generan a partir de él. Detalles y colores en
+`assets/brand/README.md`.
+
 ## Tercer hito: diseño profesional y experiencia de uso
 
 - sistema de diseño propio (`src/theme`, `src/components/ui`) alineado con LunaLav web: tipografía
