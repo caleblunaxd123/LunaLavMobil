@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { usePreventRemove } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
@@ -37,6 +38,8 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
   const negocioId = useAuthStore((s) => s.session?.usuario.negocioId);
   const queryClient = useQueryClient();
   const scrollRef = useRef<ScrollView>(null);
+  // Tras guardar se sale con replace(): no debe pedir confirmación de descarte.
+  const saved = useRef(false);
   const presetId = route.params?.clienteId;
   const [step, setStep] = useState(0);
   const [attempted, setAttempted] = useState<Record<number, boolean>>({});
@@ -118,6 +121,7 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
     onSuccess: async (pedido) => {
       await Promise.all(['pedidos', 'dashboard', 'caja', 'clientes'].map((key) => queryClient.invalidateQueries({ queryKey: [key] })));
       toast(`Pedido #${pedido.numero} registrado`);
+      saved.current = true;
       navigation.replace('PedidoDetalle', { id: pedido.id });
     },
   });
@@ -128,14 +132,19 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
     if (errors[step]) return;
     if (step < STEPS.length - 1) goTo(step + 1); else save.mutate();
   };
-  const back = () => {
+
+  // Cualquier salida (flecha, gesto o botón "atrás" de Android) pasa por aquí: en los pasos
+  // intermedios retrocede un paso y, con datos cargados, pide confirmar antes de descartar.
+  const dirty = step > 0 || !!elegido || nuevo || cart.length > 0;
+  usePreventRemove(dirty, ({ data }) => {
+    if (saved.current) { navigation.dispatch(data.action); return; }
     if (step > 0) { goTo(step - 1); return; }
-    if (!elegido && !nuevo && !cart.length) { navigation.goBack(); return; }
     Alert.alert('¿Descartar el pedido?', 'Se perderán los datos que ingresaste.', [
       { text: 'Seguir editando', style: 'cancel' },
-      { text: 'Descartar', style: 'destructive', onPress: navigation.goBack },
+      { text: 'Descartar', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
     ]);
-  };
+  });
+  const back = () => navigation.goBack();
 
   const addServicio = (s: Servicio) => setCart((c) => {
     const existing = c.find((l) => l.servicio.id === s.id);

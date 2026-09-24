@@ -6,13 +6,20 @@ import { colors, radius, shadow, space } from '../../theme';
 import { IconButton } from './Button';
 import { AppText } from './Text';
 
+/**
+ * La app es "de borde a borde" (Android 15+ lo impone): `adjustResize` ya no encoge la ventana,
+ * así que el teclado taparía los campos inferiores y la barra de acciones. En ambas plataformas
+ * el contenido se empuja con padding para que el campo activo y el botón sigan visibles.
+ */
+const keyboardBehavior = Platform.OS === 'web' ? undefined : 'padding';
+
 /** Contenedor base de cada pantalla: fondo, área segura y teclado. */
 export function Screen({ children, edges = ['top'], style }: {
   children: ReactNode; edges?: ('top' | 'bottom')[]; style?: StyleProp<ViewStyle>;
 }) {
   return (
     <SafeAreaView style={[styles.screen, style]} edges={edges}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>{children}</KeyboardAvoidingView>
+      <KeyboardAvoidingView style={styles.flex} behavior={keyboardBehavior}>{children}</KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -59,7 +66,7 @@ export function Sheet({ visible, onClose, title, subtitle, children }: {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView style={styles.sheetRoot} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.sheetRoot} behavior={keyboardBehavior}>
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar" />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, space.lg) + space.sm }]}>
           <View style={styles.handle} />

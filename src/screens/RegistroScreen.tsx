@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
   checkSlug, registerTrial, RegistrationUnavailableError, requestTrial,
   type SlugCheck, type TrialLeadPayload, type TrialRegistrationResponse,
@@ -93,7 +94,17 @@ export function RegistroScreen({ navigation }: Props) {
     if (!stepValid(step)) return;
     if (step < STEPS.length - 1) goTo(step + 1); else void submit();
   };
-  const back = () => (step === 0 ? navigation.goBack() : goTo(step - 1));
+  // El botón "atrás" de Android y el gesto retroceden un paso en vez de abandonar el alta;
+  // en el primer paso, con datos escritos, se pide confirmar.
+  const dirty = !result && (step > 0 || !!negocio.trim() || !!celular.trim());
+  usePreventRemove(dirty, ({ data }) => {
+    if (step > 0) { goTo(step - 1); return; }
+    Alert.alert('¿Salir del registro?', 'Se perderán los datos que ingresaste.', [
+      { text: 'Seguir', style: 'cancel' },
+      { text: 'Salir', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
+    ]);
+  });
+  const back = () => navigation.goBack();
 
   const submit = async () => {
     setBusy(true); setError('');
