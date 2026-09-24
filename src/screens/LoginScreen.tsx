@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
 import { Logo } from '../components/brand';
 import { AppText, Button, IconButton, InlineAlert, Screen, TextField } from '../components/ui';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, space } from '../theme';
+import { normalizeEmpresa } from '../utils/validation';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -19,6 +20,11 @@ export function LoginScreen({ navigation, route }: Props) {
   const usuarioRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
+  // El error del store es compartido (demo, sesión expirada): aquí solo se muestran los del login.
+  useEffect(() => { clearError(); }, [clearError]);
+  // Al corregir cualquier campo, el aviso del intento anterior deja de aplicar.
+  const edit = (setter: (v: string) => void) => (v: string) => { setter(v); if (error) clearError(); };
+
   const errors = {
     empresa: empresaSlug.trim().length < 2 ? 'Ingresa el código de tu empresa.' : '',
     usuario: usuario.trim().length < 3 ? 'Ingresa tu usuario.' : '',
@@ -29,7 +35,7 @@ export function LoginScreen({ navigation, route }: Props) {
   const submit = async () => {
     setSubmitted(true);
     clearError();
-    if (valid) await login({ empresaSlug: empresaSlug.trim().toLowerCase(), usuario: usuario.trim(), password });
+    if (valid) await login({ empresaSlug: normalizeEmpresa(empresaSlug), usuario: usuario.trim(), password });
   };
 
   const forgot = () => Alert.alert('¿Olvidaste tu contraseña?',
@@ -48,14 +54,15 @@ export function LoginScreen({ navigation, route }: Props) {
 
         <View style={styles.form}>
           <TextField label="Código de empresa" icon="business-outline" placeholder="ej. lavanderia-primavera"
-            value={empresaSlug} onChangeText={(v) => setEmpresaSlug(v.toLowerCase().replace(/\s/g, ''))} autoCorrect={false}
+            value={empresaSlug} autoCorrect={false}
+            onChangeText={edit((v) => setEmpresaSlug(/lunalav\.pe\//i.test(v) ? normalizeEmpresa(v) : v.toLowerCase().replace(/\s/g, '')))}
             returnKeyType="next" onSubmitEditing={() => usuarioRef.current?.focus()}
             error={submitted ? errors.empresa : ''} hint="Aparece en tu enlace web: app.lunalav.pe/tu-empresa" />
           <TextField ref={usuarioRef} label="Usuario" icon="person-outline" placeholder="Tu usuario"
-            value={usuario} onChangeText={setUsuario} autoCorrect={false} autoComplete="username" textContentType="username"
+            value={usuario} onChangeText={edit(setUsuario)} autoCorrect={false} autoComplete="username" textContentType="username"
             returnKeyType="next" onSubmitEditing={() => passwordRef.current?.focus()} error={submitted ? errors.usuario : ''} />
           <TextField ref={passwordRef} label="Contraseña" icon="lock-closed-outline" placeholder="Tu contraseña" password
-            value={password} onChangeText={setPassword} autoComplete="password" textContentType="password"
+            value={password} onChangeText={edit(setPassword)} autoComplete="password" textContentType="password"
             returnKeyType="go" onSubmitEditing={submit} error={submitted ? errors.password : ''} />
           <Pressable onPress={forgot} hitSlop={8} style={styles.forgot} accessibilityRole="button">
             <AppText variant="captionStrong" color={colors.primary}>¿Olvidaste tu contraseña?</AppText>

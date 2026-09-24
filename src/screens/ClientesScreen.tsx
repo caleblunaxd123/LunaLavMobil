@@ -1,13 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { CLIENTES_LIMIT, getClientes } from '../api/operationsApi';
+import { getClientesPagina, PAGE_SIZE } from '../api/operationsApi';
 import {
   AppText, Avatar, Badge, Button, Card, EmptyState, ErrorState, ListSkeleton, LockedState, Pager, Screen, SearchBar, TabHeader,
 } from '../components/ui';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
-import { usePagination } from '../hooks/usePagination';
 import { usePermissions } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -20,11 +19,20 @@ export function ClientesScreen({ navigation }: TabScreenProps<'Clientes'>) {
   const [texto, setTexto] = useState('');
   const term = useDebouncedValue(texto.trim());
   const allowed = can('CLIENTES');
-  const query = useQuery({ queryKey: ['clientes', negocioId, term], queryFn: () => getClientes(term), enabled: allowed });
-  const clientes = query.data ?? [];
-  const { page, setPage, pageItems, total, pageSize } = usePagination(clientes, 15, term);
-  const capped = clientes.length >= CLIENTES_LIMIT;
+  // La página vuelve a 1 al cambiar la búsqueda.
+  const [pageState, setPageState] = useState({ page: 1, key: term });
+  const page = pageState.key === term ? pageState.page : 1;
 
+  const query = useQuery({
+    queryKey: ['clientes', negocioId, term, page],
+    queryFn: () => getClientesPagina(term, page),
+    enabled: allowed,
+    placeholderData: keepPreviousData,
+  });
+  const data = query.data;
+  const capped = !!data?.capped;
+
+  const changePage = (next: number) => { setPageState({ page: next, key: term }); listRef.current?.scrollToOffset({ offset: 0, animated: true }); };
   const nuevo = () => navigation.navigate('ClienteForm');
   if (!allowed) return <Screen><View style={styles.content}><TabHeader title="Clientes" /><LockedState module="ver clientes" /></View></Screen>;
 
@@ -32,13 +40,13 @@ export function ClientesScreen({ navigation }: TabScreenProps<'Clientes'>) {
     <Screen>
       <FlatList
         ref={listRef}
-        data={pageItems}
+        data={data?.items ?? []}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={query.isRefetching && !query.isPlaceholderData} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
         ListHeaderComponent={<View style={styles.header}>
-          <TabHeader title="Clientes" subtitle={query.data ? `${total}${capped ? '+' : ''} ${term ? 'resultados' : 'clientes'}` : 'Cargando…'}
+          <TabHeader title="Clientes" subtitle={data ? `${data.total}${capped ? '+' : ''} ${term ? 'resultados' : 'clientes'}` : 'Cargando…'}
             right={<Button label="Nuevo" icon="person-add-outline" size="sm" onPress={nuevo} />} />
           <SearchBar value={texto} onChangeText={setTexto} placeholder="Buscar por nombre, celular o DNI" />
         </View>}
@@ -57,8 +65,7 @@ export function ClientesScreen({ navigation }: TabScreenProps<'Clientes'>) {
             <Ionicons name="chevron-forward" size={18} color={colors.placeholder} />
           </Card>
         )}
-        ListFooterComponent={<Pager page={page} pageSize={pageSize} total={total} capped={capped}
-          onChange={(p) => { setPage(p); listRef.current?.scrollToOffset({ offset: 0, animated: true }); }} />}
+        ListFooterComponent={data ? <Pager page={page} pageSize={PAGE_SIZE} total={data.total} capped={capped} onChange={changePage} /> : null}
       />
     </Screen>
   );

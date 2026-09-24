@@ -6,12 +6,25 @@ const RESERVED_SLUGS = new Set([
   'login', 'ticket', 'cuadre-caja', 'seleccionar-sede', 'inicio', 'pedidos', 'registrar', 'registro-antiguo',
   'clientes', 'promociones', 'reportes', 'inventario', 'ajustes', 'facturacion', 'assets', 'plataforma',
   'seguimiento', 'repartidor', 'recibo-suscripcion', 'privacidad', 'terminos', 'nosotros', 'marketing', 'demo',
+  // Reservados también por el alta del servidor (RegistroPublicoController).
+  'api', 'admin', 'app', 'soporte', 'caja',
 ]);
 
 /** "Lavandería Doña Rosa" → "lavanderia-dona-rosa" */
 export function slugify(text: string) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+
+/**
+ * Código de empresa tal como lo escribe o pega el usuario: acepta el enlace completo
+ * ("https://app.lunalav.pe/mi-empresa/login") y se queda solo con "mi-empresa".
+ */
+export function normalizeEmpresa(input: string) {
+  let value = input.trim().toLowerCase();
+  const link = value.match(/lunalav\.pe\/([^/?#\s]+)/);
+  if (link) value = link[1];
+  return value.split(/[/?#]/)[0].replace(/[^a-z0-9-]/g, '');
 }
 
 export function slugError(slug: string) {

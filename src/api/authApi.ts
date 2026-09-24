@@ -19,6 +19,9 @@ export async function loginRequest(payload: LoginPayload): Promise<Session> {
     });
     return { ...data, apiOrigin: API_ORIGINS.production, isDemo: false };
   } catch (error) {
+    // La API responde igual si falla la empresa, el usuario o la clave (no revela cuál existe).
+    if (isAxiosError(error) && error.response?.status === 401)
+      throw new Error('Revisa el código de empresa, el usuario y la contraseña.');
     throw new Error(errorMessage(error));
   }
 }

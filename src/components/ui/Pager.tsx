@@ -30,7 +30,7 @@ export function Pager({ page, pageSize, total, onChange, capped }: {
 }
 
 function CapNote() {
-  return <AppText variant="caption" align="center" style={styles.cap}>Se muestran los registros más recientes. Usa la búsqueda para encontrar los anteriores.</AppText>;
+  return <AppText variant="caption" align="center" style={styles.cap}>Hay más registros de los que se listan aquí. Usa la búsqueda para encontrar el que necesitas.</AppText>;
 }
 
 function PagerButton({ icon, label, disabled, onPress }: { icon: 'chevron-back' | 'chevron-forward'; label: string; disabled: boolean; onPress: () => void }) {

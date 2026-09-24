@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { api } from './http';
 
 export interface DashboardData {
@@ -183,8 +184,28 @@ export async function getServicios() {
 
 // ---------- Clientes ----------
 
-/** Tope de clientes por consulta: la API no pagina clientes, así que se pagina en el móvil. */
+/** Tope del buscador rápido (y del respaldo si el servidor aún no pagina clientes). */
 export const CLIENTES_LIMIT = 200;
+
+/**
+ * Directorio de clientes paginado en el servidor. Si la API todavía no publica `/paginado`,
+ * trae hasta {@link CLIENTES_LIMIT} y pagina en el dispositivo; `capped` avisa que hay más.
+ */
+export async function getClientesPagina(texto = '', pagina = 1): Promise<PagedResult<Cliente> & { capped?: boolean }> {
+  try {
+    const { data } = await api.get<PagedResult<Cliente>>('/api/clientes/paginado', {
+      params: { texto: texto.trim() || undefined, pagina, tamanoPagina: PAGE_SIZE },
+    });
+    return data;
+  } catch (error) {
+    if (!isAxiosError(error) || error.response?.status !== 404) throw error;
+    const all = await getClientes(texto);
+    return {
+      items: all.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE), total: all.length, pagina, tamanoPagina: PAGE_SIZE,
+      capped: all.length >= CLIENTES_LIMIT,
+    };
+  }
+}
 
 export async function getClientes(texto = '', limite = CLIENTES_LIMIT) {
   const { data } = await api.get<Cliente[]>('/api/clientes', {
