@@ -11,12 +11,13 @@ import { usePermissions } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, space } from '../theme';
+import { plural } from '../utils/format';
 
-const filtros: { value: FiltroPedidos; label: string; empty: string }[] = [
-  { value: 'pendientes', label: 'En curso', empty: 'No hay pedidos en curso. Los nuevos aparecerán aquí.' },
-  { value: 'listos', label: 'Por entregar', empty: 'Ningún pedido está listo para entregar todavía.' },
-  { value: 'entregados', label: 'Entregados', empty: 'Aún no hay pedidos entregados.' },
-  { value: 'ultimos', label: 'Todos', empty: 'Todavía no se registraron pedidos en esta sede.' },
+const filtros: { value: FiltroPedidos; label: string; one: string; many: string; empty: string }[] = [
+  { value: 'pendientes', label: 'En curso', one: 'en curso', many: 'en curso', empty: 'No hay pedidos en curso. Los nuevos aparecerán aquí.' },
+  { value: 'listos', label: 'Por entregar', one: 'por entregar', many: 'por entregar', empty: 'Ningún pedido está listo para entregar todavía.' },
+  { value: 'entregados', label: 'Entregados', one: 'entregado', many: 'entregados', empty: 'Aún no hay pedidos entregados.' },
+  { value: 'ultimos', label: 'Todos', one: 'pedido', many: 'pedidos', empty: 'Todavía no se registraron pedidos en esta sede.' },
 ];
 
 /** La API limita "Todos" a los 500 más recientes: se avisa para que el usuario busque. */
@@ -64,7 +65,7 @@ export function PedidosScreen({ navigation, route }: TabScreenProps<'Pedidos'>) 
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching && !query.isPlaceholderData} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
         ListHeaderComponent={<View style={styles.header}>
-          <TabHeader title="Pedidos" subtitle={data ? `${data.total} ${term ? 'resultados' : current.label.toLowerCase()}` : 'Cargando…'}
+          <TabHeader title="Pedidos" subtitle={data ? (term ? plural(data.total, 'resultado', 'resultados') : plural(data.total, current.one, current.many)) : 'Cargando…'}
             right={newOrder && <Button label="Nuevo" icon="add" size="sm" onPress={newOrder} />} />
           <SearchBar value={busqueda} onChangeText={setBusqueda} placeholder="Buscar por N°, cliente, DNI o celular" />
           {term ? <AppText variant="caption">Buscando en todos los pedidos de la sede</AppText>

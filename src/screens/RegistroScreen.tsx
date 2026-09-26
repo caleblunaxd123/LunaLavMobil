@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
-  checkSlug, registerTrial, RegistrationUnavailableError, requestTrial,
+  checkSlug, registerTrial, RegistrationUnavailableError, requestSignupCode, requestTrial,
   type SlugCheck, type TrialLeadPayload, type TrialRegistrationResponse,
 } from '../api/authApi';
 import {
@@ -16,6 +16,7 @@ import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, fonts, radius, space } from '../theme';
 import { celularValido, emailValido, passwordStrength, slugError, slugify, usuarioError } from '../utils/validation';
+import { longDate, shortDateWithYear, trialEndsOnUtc } from '../utils/format';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Registro'>;
 type Plan = TrialLeadPayload['planInteres'];
@@ -53,9 +54,24 @@ export function RegistroScreen({ navigation }: Props) {
   // Paso 4 — confirmación
   const [terms, setTerms] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Verificación del correo: se envía un código de 6 dígitos antes de crear la lavandería.
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [codigo, setCodigo] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [resendIn, setResendIn] = useState(0);
+  const [verificationOff, setVerificationOff] = useState(false);
+  const emailKey = email.trim().toLowerCase();
+  const awaitingCode = !verificationOff && codeSentTo === emailKey;
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [entering, setEntering] = useState(false);
+  const selectedPlan = plans.find((p) => p.code === plan)!;
+  const fechaPrimerPago = trialEndsOnUtc();
 
   const debouncedSlug = useDebouncedValue(slug, 500);
   const [slugCheck, setSlugCheck] = useState<SlugCheck & { slug?: string }>({ status: 'unknown' });
@@ -92,7 +108,21 @@ export function RegistroScreen({ navigation }: Props) {
   const next = () => {
     setAttempted((a) => ({ ...a, [step]: true }));
     if (!stepValid(step)) return;
-    if (step < STEPS.length - 1) goTo(step + 1); else void submit();
+    if (step < STEPS.length - 1) goTo(step + 1); else if (awaitingCode || verificationOff) void submit(); else void sendCode();
+  };
+
+  const sendCode = async () => {
+    setBusy(true); setError(''); setCodeError('');
+    try {
+      const r = await requestSignupCode(emailKey);
+      if (r === 'unsupported') { setVerificationOff(true); await submit(); return; }
+      setCodeSentTo(emailKey); setCodigo(''); setResendIn(60);
+      scrollRef.current?.scrollToEnd({ animated: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No pudimos enviar el código.');
+    } finally {
+      setBusy(false);
+    }
   };
   // El botón "atrás" de Android y el gesto retroceden un paso en vez de abandonar el alta;
   // en el primer paso, con datos escritos, se pide confirmar.
@@ -107,12 +137,13 @@ export function RegistroScreen({ navigation }: Props) {
   const back = () => navigation.goBack();
 
   const submit = async () => {
-    setBusy(true); setError('');
+    if (awaitingCode && codigo.length !== 6) { setCodeError('Ingresa los 6 dígitos del código.'); return; }
+    setBusy(true); setError(''); setCodeError('');
     try {
       const data = await registerTrial({
         nombreNegocio: negocio.trim(), slug, nombreResponsable: nombre.trim(), email: email.trim().toLowerCase(),
         celular: celular.replace(/\s/g, ''), usuario: usuario.trim().toLowerCase(), password, plan,
-        sedeNombre: sede.trim(), aceptaTerminos: true,
+        sedeNombre: sede.trim(), aceptaTerminos: true, codigoVerificacion: awaitingCode ? codigo : undefined,
       });
       setResult({ kind: 'created', data });
     } catch (e) {
@@ -125,7 +156,9 @@ export function RegistroScreen({ navigation }: Props) {
           setError(leadError instanceof Error ? leadError.message : 'No pudimos enviar tu solicitud.');
         }
       } else {
-        setError(e instanceof Error ? e.message : 'No se pudo crear tu cuenta.');
+        const msg = e instanceof Error ? e.message : 'No se pudo crear tu cuenta.';
+        // Los errores del código se muestran junto al campo del código.
+        if (awaitingCode && /c[oó]digo/i.test(msg)) setCodeError(msg); else setError(msg);
       }
     } finally {
       setBusy(false);
@@ -140,7 +173,7 @@ export function RegistroScreen({ navigation }: Props) {
     if (!ok) navigation.replace('Login', { empresaSlug: result.data.slug, usuario: usuario.trim().toLowerCase() });
   };
 
-  if (result) return <Success result={result} slug={slug} usuario={usuario.trim().toLowerCase()} entering={entering} onEnter={enter}
+  if (result) return <Success result={result} slug={slug} usuario={usuario.trim().toLowerCase()} precioMensual={selectedPlan.price} entering={entering} onEnter={enter}
     onClose={() => navigation.popToTop()} />;
 
   return (
@@ -174,6 +207,8 @@ export function RegistroScreen({ navigation }: Props) {
             hint="Te enviaremos novedades de tu cuenta y del período de prueba." />
           <TextField label="Usuario" icon="at-outline" placeholder="ej. rosa" value={usuario}
             onChangeText={(v) => setUsuario(v.toLowerCase().replace(/\s/g, ''))} autoCorrect={false} maxLength={50} error={show(1, 'usuario')}
+            // Para que el gestor de contraseñas guarde el usuario con que se entra (no el correo).
+            autoComplete="username-new" textContentType="username"
             hint="Lo usarás junto al código de empresa para entrar." />
           <TextField label="Contraseña" icon="lock-closed-outline" placeholder="Mínimo 8 caracteres" password value={password}
             onChangeText={setPassword} autoComplete="new-password" textContentType="newPassword" error={show(1, 'password')} />
@@ -222,20 +257,43 @@ export function RegistroScreen({ navigation }: Props) {
             ['Nombre', nombre.trim()], ['Correo', email.trim().toLowerCase()], ['Usuario', usuario.trim().toLowerCase()], ['Contraseña', '••••••••'],
           ]} />
           <Summary title="Plan" onEdit={() => goTo(2)} rows={[
-            ['Plan elegido', plans.find((p) => p.code === plan)!.name], ['Hoy pagas', 'S/ 0.00 · 14 días gratis'],
+            ['Plan elegido', selectedPlan.name], ['Hoy pagas', 'S/ 0.00 · 14 días gratis'],
+            ['Primer pago', `S/ ${selectedPlan.price}.00 · ${shortDateWithYear(fechaPrimerPago)}`],
           ]} />
+          <Card style={styles.billingCard}>
+            <View style={styles.billingHead}>
+              <AppText variant="captionStrong" color={colors.primary}>PRIMER PAGO</AppText>
+              <AppText variant="subheading">S/ {selectedPlan.price}.00 / mes</AppText>
+            </View>
+            <AppText variant="body">Vence el {longDate(fechaPrimerPago)}, al terminar tu prueba gratis.</AppText>
+            <AppText variant="caption" color={colors.textSecondary}>
+              Hoy no pagas. No pedimos tarjeta ni hacemos cobros automáticos desde la app. Para continuar después de la prueba, tendrás que coordinar el pago antes de esa fecha.
+            </AppText>
+          </Card>
           <Checkbox checked={terms} onChange={setTerms} label={<AppText variant="caption">
             Acepto los <AppText variant="captionStrong" color={colors.primary} onPress={() => void Linking.openURL('https://app.lunalav.pe/terminos')}>Términos</AppText> y
             la <AppText variant="captionStrong" color={colors.primary} onPress={() => void Linking.openURL('https://app.lunalav.pe/privacidad')}>Política de privacidad</AppText> de LunaLav.
           </AppText>} />
           {!!show(3, 'terms') && <AppText variant="caption" color={colors.danger}>{show(3, 'terms')}</AppText>}
+          {awaitingCode && <Card style={styles.billingCard}>
+            <AppText variant="subheading">Verifica tu correo</AppText>
+            <AppText variant="caption" color={colors.textSecondary}>Enviamos un código de 6 dígitos a {codeSentTo}. Revisa también la carpeta de spam.</AppText>
+            <TextField label="Código de verificación" icon="key-outline" placeholder="000000" value={codigo}
+              onChangeText={(v) => { setCodigo(v.replace(/\D/g, '').slice(0, 6)); setCodeError(''); }}
+              keyboardType="number-pad" maxLength={6} autoComplete="one-time-code" textContentType="oneTimeCode" error={codeError} />
+            <Pressable onPress={resendIn > 0 || busy ? undefined : () => void sendCode()} hitSlop={8} accessibilityRole="button">
+              <AppText variant="captionStrong" color={resendIn > 0 ? colors.muted : colors.primary}>
+                {resendIn > 0 ? `Reenviar código en ${resendIn} s` : 'Reenviar código'}
+              </AppText>
+            </Pressable>
+          </Card>}
           {!!error && <InlineAlert title="No pudimos crear tu cuenta" text={error} />}
         </View>}
       </ScrollView>
       <BottomBar>
         <View style={styles.actions}>
           {step > 0 && <Button label="Atrás" variant="secondary" onPress={back} style={styles.backBtn} disabled={busy} />}
-          <Button label={step === STEPS.length - 1 ? 'Crear mi lavandería' : 'Continuar'} iconRight={step === STEPS.length - 1 ? undefined : 'arrow-forward'}
+          <Button label={step < STEPS.length - 1 ? 'Continuar' : awaitingCode ? 'Verificar y crear' : verificationOff ? 'Crear mi lavandería' : 'Enviar código al correo'} iconRight={step === STEPS.length - 1 ? undefined : 'arrow-forward'}
             onPress={next} busy={busy} style={styles.flex} />
         </View>
       </BottomBar>
@@ -280,8 +338,8 @@ function Summary({ title, rows, onEdit }: { title: string; rows: [string, string
   );
 }
 
-function Success({ result, slug, usuario, entering, onEnter, onClose }: {
-  result: Result; slug: string; usuario: string; entering: boolean; onEnter: () => void; onClose: () => void;
+function Success({ result, slug, usuario, precioMensual, entering, onEnter, onClose }: {
+  result: Result; slug: string; usuario: string; precioMensual: string; entering: boolean; onEnter: () => void; onClose: () => void;
 }) {
   const created = result.kind === 'created';
   return (
@@ -296,8 +354,8 @@ function Success({ result, slug, usuario, entering, onEnter, onClose }: {
         <AppText variant="display" align="center">{created ? '¡Tu lavandería está lista!' : 'Recibimos tu solicitud'}</AppText>
         {created ? <>
           <AppText variant="body" align="center">
-            Tu prueba gratis dura {result.data.diasPrueba} días (hasta el {new Date(result.data.pruebaHasta).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })}).
-            Guarda estos datos: tu equipo los necesitará para entrar.
+            Tu prueba gratis dura {result.data.diasPrueba} días y termina el {longDate(result.data.pruebaHasta)}.
+            El primer pago de S/ {precioMensual}.00 al mes vence ese día. Hoy no se realizó ningún cobro.
           </AppText>
           <Card style={styles.credentials}>
             <View style={styles.summaryRow}><AppText variant="caption">Código de empresa</AppText><AppText variant="subheading">{result.data.slug || slug}</AppText></View>
@@ -321,6 +379,8 @@ const styles = StyleSheet.create({
   intro: { gap: 6, marginBottom: space.xs },
   actions: { flexDirection: 'row', gap: space.md },
   backBtn: { width: 110 },
+  billingCard: { borderColor: colors.primarySoft, backgroundColor: '#F7FBFF', gap: space.sm },
+  billingHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
   plan: { borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: space.lg, gap: space.md },
   planSelected: { borderColor: colors.primary, borderWidth: 2, backgroundColor: '#F7FBFF' },
   planHead: { flexDirection: 'row', alignItems: 'center', gap: space.md },

@@ -46,7 +46,7 @@ export function ClientesScreen({ navigation }: TabScreenProps<'Clientes'>) {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={query.isRefetching && !query.isPlaceholderData} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
         ListHeaderComponent={<View style={styles.header}>
-          <TabHeader title="Clientes" subtitle={data ? `${data.total}${capped ? '+' : ''} ${term ? 'resultados' : 'clientes'}` : 'Cargando…'}
+          <TabHeader title="Clientes" subtitle={data ? `${data.total}${capped ? '+' : ''} ${term ? (data.total === 1 ? 'resultado' : 'resultados') : (data.total === 1 ? 'cliente' : 'clientes')}` : 'Cargando…'}
             right={<Button label="Nuevo" icon="person-add-outline" size="sm" onPress={nuevo} />} />
           <SearchBar value={texto} onChangeText={setTexto} placeholder="Buscar por nombre, celular o DNI" />
         </View>}

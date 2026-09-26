@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { apiErrorMessage } from '../api/errors';
-import { actualizarCliente, crearCliente, getCliente, type Cliente, type ClienteInput } from '../api/operationsApi';
+import { actualizarCliente, consultarDni, consultarRuc, crearCliente, getCliente, type Cliente, type ClienteInput } from '../api/operationsApi';
 import { AppText, BottomBar, Button, InlineAlert, ListSkeleton, Screen, StackHeader, TextField, toast } from '../components/ui';
 import type { AppScreenProps } from '../navigation/types';
 import { space } from '../theme';
+import { rucValido } from '../utils/validation';
 
 const clean = (value: string) => value.trim() || null;
 
@@ -15,7 +16,8 @@ export function clienteErrors(input: { nombre: string; celular: string; dni: str
     nombre: input.nombre.trim().length < 2 ? 'El nombre debe tener al menos 2 caracteres.' : '',
     celular: input.celular.trim() && !/^\+?\d{4,20}$/.test(input.celular.trim()) ? 'Solo números (y + con código de país).' : '',
     dni: input.dni.trim() && !/^\d{8}$/.test(input.dni.trim()) ? 'El DNI tiene 8 dígitos.' : '',
-    ruc: input.ruc.trim() && !/^\d{11}$/.test(input.ruc.trim()) ? 'El RUC tiene 11 dígitos.' : '',
+    ruc: !input.ruc.trim() ? '' : !/^\d{11}$/.test(input.ruc.trim()) ? 'El RUC tiene 11 dígitos.'
+      : !rucValido(input.ruc.trim()) ? 'RUC inválido: revisa los dígitos.' : '',
   };
 }
 
@@ -38,8 +40,55 @@ function ClienteForm({ initial, onSaved, onClose }: { initial?: Cliente; onSaved
   const [direccion, setDireccion] = useState(initial?.direccion ?? '');
   const [touched, setTouched] = useState(false);
   const errors = clienteErrors({ nombre, celular, dni, ruc });
-  const valid = Object.values(errors).every((e) => !e);
   const show = (k: keyof typeof errors) => (touched ? errors[k] : '');
+
+  // RUC completo y con dígito verificador correcto: se confirma en el padrón de SUNAT.
+  const rucListo = !!ruc.trim() && !errors.ruc;
+  const padron = useQuery({
+    queryKey: ['ruc', ruc.trim()], queryFn: () => consultarRuc(ruc.trim()), enabled: rucListo, staleTime: 24 * 60 * 60_000, retry: false,
+  });
+  const datosRuc = rucListo ? padron.data : undefined;
+  // Con los 8 dígitos del DNI se busca el nombre en RENIEC y se completa si el nombre está vacío.
+  const [dniInfo, setDniInfo] = useState<{ dni: string; texto: string } | null>(null);
+  const changeDni = (value: string) => {
+    const v = value.replace(/\D/g, '');
+    setDni(v);
+    if (v.length !== 8) { setDniInfo(null); return; }
+    setDniInfo({ dni: v, texto: 'Buscando en RENIEC…' });
+    void queryClient.fetchQuery({ queryKey: ['dni', v], queryFn: () => consultarDni(v), staleTime: 24 * 60 * 60_000 })
+      .then((d) => {
+        if (d.existe && d.nombreCompleto) {
+          setNombre((n) => (n.trim() ? n : d.nombreCompleto!));
+          setDniInfo({ dni: v, texto: `✓ ${d.nombreCompleto}` });
+        } else {
+          setDniInfo({ dni: v, texto: d.verificado ? 'No encontramos ese DNI en RENIEC.' : 'No se pudo consultar RENIEC ahora.' });
+        }
+      })
+      .catch(() => setDniInfo({ dni: v, texto: 'No se pudo consultar RENIEC ahora.' }));
+  };
+  const dniHint = dniInfo && dniInfo.dni === dni ? dniInfo.texto : undefined;
+
+  // Al completar un RUC válido se consulta SUNAT y, si el nombre o la dirección están vacíos,
+  // se completan con la razón social y el domicilio fiscal.
+  const changeRuc = (value: string) => {
+    const v = value.replace(/\D/g, '');
+    setRuc(v);
+    if (v.length !== 11 || !rucValido(v)) return;
+    void queryClient.fetchQuery({ queryKey: ['ruc', v], queryFn: () => consultarRuc(v), staleTime: 24 * 60 * 60_000 })
+      .then((d) => {
+        if (!d.existe) return;
+        if (d.razonSocial) setNombre((n) => (n.trim() ? n : d.razonSocial!));
+        if (d.direccion) setDireccion((a) => (a.trim() ? a : d.direccion!));
+      })
+      .catch(() => undefined);
+  };
+  // Con los 11 dígitos escritos el error se muestra al instante, sin esperar a guardar.
+  const rucError = (ruc.trim().length === 11 ? errors.ruc : show('ruc')) || (rucListo && datosRuc?.problema) || '';
+  const rucHint = !rucListo ? undefined
+    : padron.isFetching ? 'Consultando SUNAT…'
+      : datosRuc?.existe ? `✓ ${datosRuc.razonSocial ?? ''}${datosRuc.advertencia ? ` · ${datosRuc.advertencia}` : ''}`
+        : datosRuc && !datosRuc.verificado ? 'No se pudo consultar SUNAT ahora; se validó el formato.' : undefined;
+  const valid = Object.values(errors).every((e) => !e) && !(datosRuc?.verificado && !datosRuc.existe);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -70,10 +119,10 @@ function ClienteForm({ initial, onSaved, onClose }: { initial?: Cliente; onSaved
         <TextField label="Celular / WhatsApp" optional icon="logo-whatsapp" placeholder="999 999 999" value={celular}
           onChangeText={(v) => setCelular(v.replace(/[^\d+]/g, ''))} keyboardType="phone-pad" maxLength={21} error={show('celular')} />
         <View style={styles.row}>
-          <View style={styles.flex}><TextField label="DNI" optional placeholder="8 dígitos" value={dni} onChangeText={(v) => setDni(v.replace(/\D/g, ''))}
-            keyboardType="number-pad" maxLength={8} error={show('dni')} /></View>
-          <View style={styles.flex}><TextField label="RUC" optional placeholder="11 dígitos" value={ruc} onChangeText={(v) => setRuc(v.replace(/\D/g, ''))}
-            keyboardType="number-pad" maxLength={11} error={show('ruc')} /></View>
+          <View style={styles.flex}><TextField label="DNI" optional placeholder="8 dígitos" value={dni} onChangeText={changeDni}
+            keyboardType="number-pad" maxLength={8} error={show('dni')} hint={dniHint} /></View>
+          <View style={styles.flex}><TextField label="RUC" optional placeholder="11 dígitos" value={ruc} onChangeText={changeRuc}
+            keyboardType="number-pad" maxLength={11} error={rucError} hint={rucHint} /></View>
         </View>
         <TextField label="Dirección" optional icon="location-outline" placeholder="Calle, número, distrito" value={direccion}
           onChangeText={setDireccion} autoCapitalize="sentences" maxLength={200} hint="Necesaria para recojos a domicilio." />

@@ -85,11 +85,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         // La demo no emite refresh token: al expirar se pide un acceso de visitante nuevo.
         const next = current.isDemo ? await demoRequest() : await refreshRequest(current);
+        // Una renovación puede terminar después de que el usuario cerró sesión o cambió de cuenta.
+        // No permitir que esa respuesta tardía vuelva a autenticarlo ni sobrescriba otra sesión.
+        if (get().session !== current) return null;
         await save(next);
         set({ session: next });
         return next;
       } catch (error) {
-        if (error instanceof SessionExpiredError) {
+        if (error instanceof SessionExpiredError && get().session === current) {
           await save(null);
           queryClient.clear();
           set({ session: null, error: error.message });

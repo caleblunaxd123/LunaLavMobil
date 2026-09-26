@@ -41,7 +41,20 @@ export function usuarioError(usuario: string) {
   return '';
 }
 
-export const emailValido = (email: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+/**
+ * RUC con prefijo y dígito verificador correctos (mismo algoritmo que la API:
+ * DocumentoFiscalValidator). Detecta errores de tipeo sin consultar a SUNAT.
+ */
+export function rucValido(ruc: string) {
+  if (!/^(10|15|17|20)\d{9}$/.test(ruc)) return false;
+  const pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  const suma = pesos.reduce((acc, p, i) => acc + p * Number(ruc[i]), 0);
+  let digito = 11 - (suma % 11);
+  if (digito === 10) digito = 0; else if (digito === 11) digito = 1;
+  return digito === Number(ruc[10]);
+}
+
+export const emailValido =(email: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
 export const celularValido = (celular: string) => /^\+?\d{6,20}$/.test(celular.replace(/\s/g, ''));
 
 /** Fuerza de la contraseña de 0 a 4, con una etiqueta legible. */

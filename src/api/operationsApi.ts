@@ -136,6 +136,55 @@ export interface RegistrarGastoPayload {
   descripcion?: string;
 }
 
+/** RUC en el padrón de SUNAT (GET /api/documentos/ruc/{ruc}). */
+export interface ConsultaRuc {
+  ruc: string;
+  formatoValido: boolean;
+  /** false si el padrón no respondió: no se bloquea, solo queda el dígito verificador. */
+  verificado: boolean;
+  existe: boolean;
+  razonSocial?: string | null;
+  estado?: string | null;
+  condicion?: string | null;
+  direccion?: string | null;
+  activoHabido: boolean;
+  problema?: string | null;
+  advertencia?: string | null;
+}
+
+export async function consultarRuc(ruc: string) {
+  const { data } = await api.get<ConsultaRuc>(`/api/documentos/ruc/${encodeURIComponent(ruc)}`);
+  return data;
+}
+
+/** Nombre de una persona por DNI (GET /api/documentos/dni/{dni}); solo sirve para autocompletar. */
+export interface ConsultaDni {
+  dni: string;
+  verificado: boolean;
+  existe: boolean;
+  nombreCompleto?: string | null;
+}
+
+export async function consultarDni(dni: string) {
+  const { data } = await api.get<ConsultaDni>(`/api/documentos/dni/${encodeURIComponent(dni)}`);
+  return data;
+}
+
+/** Estado de la suscripción de la empresa (GET /api/suscripcion/mia, SuscripcionController). */
+export interface MiSuscripcion {
+  mostrar: boolean;
+  tipo: 'OK' | 'AVISO' | 'VENCIDA';
+  mensaje: string;
+  proximoPago?: string | null;
+  diasParaVencer?: number | null;
+  estadoSuscripcion: string;
+}
+
+export async function getMiSuscripcion() {
+  const { data } = await api.get<MiSuscripcion>('/api/suscripcion/mia');
+  return data;
+}
+
 export async function getDashboard() {
   const { data } = await api.get<DashboardData>('/api/pedidos/dashboard');
   return data;

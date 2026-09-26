@@ -16,7 +16,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import type { AppScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, fonts, radius, space } from '../theme';
-import { methodLabel, money, parseAmount } from '../utils/format';
+import { methodLabel, money, parseAmount, roundMoney } from '../utils/format';
 import { celularValido } from '../utils/validation';
 
 interface CartLine { servicio: Servicio; cantidad: string; precio: string }
@@ -32,7 +32,7 @@ function deliveryDate(days: number) {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T18:00:00`;
 }
-const round10 = (value: number) => Math.round(value * 10) / 10;
+const roundTenth = (value: number) => Math.round(value * 10) / 10;
 
 export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPedido'>) {
   const negocioId = useAuthStore((s) => s.session?.usuario.negocioId);
@@ -86,7 +86,7 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
   const prendas = lines.reduce((acc, l) => acc + (Number.isFinite(l.cantidadNum) ? l.cantidadNum : 0), 0);
   const subtotal = lines.reduce((acc, l) => acc + l.total, 0);
   const recargo = urgente ? Math.round(subtotal * URGENT_PCT) / 100 : 0;
-  const total = round10(subtotal + recargo);
+  const total = roundMoney(subtotal + recargo);
   const adelantoNum = adelanto.trim() ? parseAmount(adelanto) : 0;
   const direccionCliente = nuevo ? direccion.trim() : elegido?.direccion?.trim() ?? '';
 
@@ -148,14 +148,14 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
 
   const addServicio = (s: Servicio) => setCart((c) => {
     const existing = c.find((l) => l.servicio.id === s.id);
-    if (existing) return c.map((l) => (l === existing ? { ...l, cantidad: String(round10((parseAmount(l.cantidad) || 0) + 1)) } : l));
+    if (existing) return c.map((l) => (l === existing ? { ...l, cantidad: String(roundTenth((parseAmount(l.cantidad) || 0) + 1)) } : l));
     return [...c, { servicio: s, cantidad: '1', precio: s.precio.toFixed(2) }];
   });
   const updateLine = (id: number, patch: Partial<CartLine>) => setCart((c) => c.map((l) => (l.servicio.id === id ? { ...l, ...patch } : l)));
   const stepLine = (id: number, delta: number) => {
     const line = cart.find((l) => l.servicio.id === id);
     if (!line) return;
-    const n = round10((parseAmount(line.cantidad) || 0) + delta);
+    const n = roundTenth((parseAmount(line.cantidad) || 0) + delta);
     if (n <= 0) setCart((c) => c.filter((l) => l.servicio.id !== id)); else updateLine(id, { cantidad: String(n) });
   };
   const inCart = (id: number) => cart.some((l) => l.servicio.id === id);

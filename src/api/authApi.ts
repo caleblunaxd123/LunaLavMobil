@@ -90,6 +90,8 @@ export interface TrialRegistrationPayload {
   plan: TrialLeadPayload['planInteres'];
   sedeNombre: string;
   aceptaTerminos: boolean;
+  /** Código de 6 dígitos enviado al correo (requestSignupCode). */
+  codigoVerificacion?: string;
 }
 
 export interface TrialRegistrationResponse {
@@ -113,6 +115,20 @@ export async function registerTrial(payload: TrialRegistrationPayload): Promise<
     return data;
   } catch (error) {
     if (endpointMissing(error)) throw new RegistrationUnavailableError('El alta automática no está disponible.');
+    throw new Error(errorMessage(error));
+  }
+}
+
+/**
+ * Pide el código de verificación que se envía al correo antes de crear la lavandería.
+ * 'sent' si se envió; 'unsupported' si el servidor aún no pide verificación (versión anterior).
+ */
+export async function requestSignupCode(email: string): Promise<'sent' | 'unsupported'> {
+  try {
+    await axios.post(`${API_ORIGINS.production}/api/registro/codigo`, { email }, { timeout: 25_000 });
+    return 'sent';
+  } catch (error) {
+    if (endpointMissing(error)) return 'unsupported';
     throw new Error(errorMessage(error));
   }
 }

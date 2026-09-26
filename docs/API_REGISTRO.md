@@ -1,8 +1,8 @@
 # Registro autónomo desde la app: contrato de API
 
-La pantalla **Crear cuenta** de LunaLav Móvil usa dos endpoints públicos que **todavía no existen**
-en el backend de LunaLav. Mientras falten, la app no se rompe: envía los datos como interesado a
-`POST /api/interesados-demo` (endpoint que sí existe) y le dice al usuario que lo contactarán.
+La pantalla **Crear cuenta** de LunaLav Móvil integra el alta autónoma publicada en el backend.
+Si el endpoint de alta responde 404/405, la app conserva el flujo alternativo de solicitud de prueba
+mediante `POST /api/interesados-demo` y le informa al usuario que será contactado.
 
 ## `GET /api/registro/disponible?slug={codigo}`
 
@@ -17,8 +17,8 @@ Si responde 404 o falla, la app no bloquea el registro: la validación final que
 
 ## `POST /api/registro/prueba`
 
-Crea empresa, sede y usuario administrador con una prueba de 14 días. Anónimo, con el rate limit
-`public-write`.
+Crea empresa, sede, áreas iniciales, usuario administrador, roles y permisos por defecto con una
+prueba de 14 días. Anónimo, con el rate limit `signup`.
 
 ```json
 {
@@ -57,8 +57,8 @@ Errores: `400`/`409` con `{ "mensaje": "..." }`, que la app muestra tal cual.
 
 ### Qué debe hacer el endpoint
 
-1. Repetir el alta que ya hace `NegociosController.Crear`: negocio, sede, usuario ADMIN, roles y
-   permisos por defecto, configuración inicial y el servicio de cargo a domicilio.
+1. Crear negocio, sede, áreas, usuario ADMIN, roles y permisos por defecto, configuración inicial y
+   el servicio de cargo a domicilio en una sola transacción.
 2. Dejar la suscripción en `EstadoSuscripcion = PRUEBA`, con `ProximoPago = hoy + 14 días` y el plan
    elegido (`FACTURA` → `PRO`, `MULTISEDE` → `PREMIUM`).
 3. Bloquear el acceso cuando la prueba vence. Hoy `NegocioAccessRules.PuedeOperar` solo bloquea los

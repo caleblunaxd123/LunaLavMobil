@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders, CanceledError, isAxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { AxiosHeaders, CanceledError, create, isAxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/authStore';
 import { isTokenExpiring } from './session';
 
@@ -10,7 +10,7 @@ const bearer = (token: string) => `Bearer ${token}`;
  * Cliente HTTP autenticado. Toma siempre la sesión vigente del store (origen y token),
  * renueva el access token antes de que expire y reintenta una vez si la API responde 401.
  */
-export const api = axios.create({ timeout: 15_000 });
+export const api = create({ timeout: 15_000 });
 
 api.interceptors.request.use(async (config) => {
   const store = useAuthStore.getState();

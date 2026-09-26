@@ -2,9 +2,46 @@ import type { Tone } from '../components/ui/Badge';
 
 export const money = (value: number | undefined | null) => `S/ ${(value ?? 0).toFixed(2)}`;
 
+/** "1 cliente" / "3 clientes": evita el "1 clientes" en contadores. */
+export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Match the C# API's commercial rounding to the nearest S/ 0.10. */
+export function roundMoney(value: number) {
+  // Match PedidoCalculos.RedondearA10Centimos in the C# API so the preview
+  // agrees with the amount persisted by the server.
+  return Math.round((value + Number.EPSILON) * 10) / 10;
+}
+
+/** Public signup stores trial expiry as UTC calendar date + 14 days. */
+export function trialEndsOnUtc(startedAt = new Date(), trialDays = 14) {
+  const date = new Date(Date.UTC(
+    startedAt.getUTCFullYear(), startedAt.getUTCMonth(), startedAt.getUTCDate() + trialDays,
+  ));
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * ISO dates without a time represent a local calendar day, not midnight UTC.
+ * La API guarda y devuelve fechas con hora en hora local de Perú y SIN zona
+ * ("2026-09-27T18:00:00"); Hermes las leería como UTC y correría todo 5 horas.
+ * Sin zona explícita se interpretan como hora local del dispositivo.
+ */
+export function parseDate(value: string) {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (day) return new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
+  const local = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,7}))?)?$/.exec(value);
+  if (local) {
+    const ms = local[7] ? Number(local[7].slice(0, 3).padEnd(3, '0')) : 0;
+    return new Date(Number(local[1]), Number(local[2]) - 1, Number(local[3]),
+      Number(local[4]), Number(local[5]), Number(local[6] ?? 0), ms);
+  }
+  return new Date(value);
+}
+
 export const relativeDay = (value?: string | null) => {
   if (!value) return '—';
-  const date = new Date(value);
+  const date = parseDate(value);
+  if (!Number.isFinite(date.getTime())) return '—';
   const today = new Date();
   const diff = Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
     - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000);
@@ -17,19 +54,39 @@ export const relativeDay = (value?: string | null) => {
 /** La fecha ya pasó (antes de hoy): sirve para marcar entregas atrasadas. */
 export function isPastDay(value?: string | null) {
   if (!value) return false;
-  const d = new Date(value);
+  const d = parseDate(value);
+  if (!Number.isFinite(d.getTime())) return false;
   const t = new Date();
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()) < new Date(t.getFullYear(), t.getMonth(), t.getDate());
 }
 
-export const shortDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—';
+export const shortDate = (value?: string | null) => {
+  if (!value) return '—';
+  const date = parseDate(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }) : '—';
+};
+
+export const longDate = (value?: string | null) => {
+  if (!value) return '—';
+  const date = parseDate(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '—';
+};
+
+export const shortDateWithYear = (value?: string | null) => {
+  if (!value) return '—';
+  const date = parseDate(value);
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—';
+};
 
 export const dateTime = (value?: string | null) =>
-  value ? new Date(value).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  value ? parseDate(value).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
 export const time = (value: string) =>
-  new Date(value).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+  parseDate(value).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
 /** Fecha local en formato ISO (yyyy-MM-dd), la que espera la API para filtrar por día. */
 export function isoDate(date: Date) {

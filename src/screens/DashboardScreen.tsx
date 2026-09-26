@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { getDashboard } from '../api/operationsApi';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { getDashboard, getMiSuscripcion } from '../api/operationsApi';
 import { LogoMark } from '../components/brand';
 import { AppText, Avatar, Card, Divider, ErrorState, InlineAlert, Kpi, Screen, Section, Skeleton } from '../components/ui';
 import { usePermissions, type Modulo } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, fonts, radius, shadow, space } from '../theme';
-import { money, processLabel } from '../utils/format';
+import { longDate, money, plural, processLabel } from '../utils/format';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -20,10 +20,43 @@ function greeting() {
 
 /** "+12% vs ayer" — comparación simple para leer la tendencia de un vistazo. */
 function versus(today: number, yesterday: number) {
-  if (!yesterday) return today ? 'Ayer no hubo movimiento' : 'Sin movimiento aún';
+  if (!yesterday) return today ? 'Ayer: 0' : 'Sin movimiento';
   if (!today) return 'Sin movimiento aún';
   const pct = Math.round(((today - yesterday) / yesterday) * 100);
   return `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs ayer`;
+}
+
+/**
+ * Estado de la suscripción para el administrador: días de prueba restantes y, cuando se acerca
+ * el vencimiento o ya venció, un aviso destacado con cómo renovar. Sin esto el dueño se entera
+ * recién cuando la app lo deja fuera.
+ */
+function SubscriptionNotice({ negocioId }: { negocioId: number }) {
+  const q = useQuery({ queryKey: ['suscripcion', negocioId], queryFn: getMiSuscripcion, staleTime: 10 * 60_000 });
+  const s = q.data;
+  if (!s) return null;
+  const dias = s.diasParaVencer ?? null;
+  const vence = s.proximoPago ? longDate(s.proximoPago) : null;
+  const renew = () => void Linking.openURL(`mailto:contacto@lunalav.pe?subject=${encodeURIComponent('Renovar mi suscripción de LunaLav')}`);
+
+  if (s.mostrar && s.tipo !== 'OK') {
+    return (
+      <Pressable onPress={renew} accessibilityRole="button" style={styles.demo}>
+        <InlineAlert tone={s.tipo === 'VENCIDA' ? 'danger' : 'warning'} icon="card-outline"
+          title={s.tipo === 'VENCIDA' ? 'Tu suscripción venció' : dias === 0 ? 'Tu suscripción vence hoy' : `Tu suscripción vence en ${dias} ${dias === 1 ? 'día' : 'días'}`}
+          text={`${vence ? `Fecha de pago: ${vence}. ` : ''}Toca aquí para escribirnos y renovarla sin cortes.`} />
+      </Pressable>
+    );
+  }
+  if (s.estadoSuscripcion === 'PRUEBA' && dias != null && dias > 0) {
+    return (
+      <View style={styles.demo}>
+        <InlineAlert tone="info" icon="gift-outline" title={`Prueba gratis: te ${dias === 1 ? 'queda 1 día' : `quedan ${dias} días`}`}
+          text={vence ? `Termina el ${vence}. Hoy no pagas nada.` : 'Hoy no pagas nada.'} />
+      </View>
+    );
+  }
+  return null;
 }
 
 export function DashboardScreen({ navigation }: TabScreenProps<'Inicio'>) {
@@ -68,6 +101,8 @@ export function DashboardScreen({ navigation }: TabScreenProps<'Inicio'>) {
         {session.isDemo && <View style={styles.demo}><InlineAlert tone="info" icon="sparkles" title="Estás en la demo"
           text="Los datos son de ejemplo. Crea tu cuenta gratis para usar LunaLav con tu lavandería." /></View>}
 
+        {!session.isDemo && usuario.rol === 'ADMIN' && <SubscriptionNotice negocioId={usuario.negocioId} />}
+
         {can('REGISTRAR') && <Pressable onPress={() => navigation.navigate('NuevoPedido')} accessibilityRole="button" accessibilityLabel="Registrar nuevo pedido">
           {({ pressed }) => (
             <LinearGradient colors={[colors.navy, colors.navyGradientEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.cta, pressed && styles.pressed]}>
@@ -91,7 +126,7 @@ export function DashboardScreen({ navigation }: TabScreenProps<'Inicio'>) {
                   <Kpi icon="sync-outline" tone={colors.warning} label="En curso" value={String(d.totalPendientes + (d.totalEnProceso ?? 0))}
                     hint="Ver pedidos en curso" onPress={can('PEDIDOS') ? () => navigation.navigate('Pedidos', { filtro: 'pendientes' }) : undefined} />
                   <Kpi icon="bag-check-outline" tone={colors.teal} label="Por entregar" value={String(d.totalListos)}
-                    hint={`${d.pedidosEntregadosHoy ?? 0} entregados hoy`} onPress={can('PEDIDOS') ? () => navigation.navigate('Pedidos', { filtro: 'listos' }) : undefined} />
+                    hint={`${plural(d.pedidosEntregadosHoy ?? 0, 'entregado', 'entregados')} hoy`} onPress={can('PEDIDOS') ? () => navigation.navigate('Pedidos', { filtro: 'listos' }) : undefined} />
                 </View>
                 {(d.saldoPorCobrar ?? 0) > 0 && <View style={styles.block}><InlineAlert tone="warning" title={`${money(d.saldoPorCobrar)} por cobrar`}
                   text="Saldo pendiente de pedidos activos. Cóbralo al entregar." /></View>}

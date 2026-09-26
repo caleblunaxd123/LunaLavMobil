@@ -101,7 +101,13 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
               {i > 0 && <Divider inset={68} />}
               <ListItem title={t.label} subtitle={t.hint} leading={<Icon name={t.icon} tint={colors.navySoft} />}
                 trailing={<Ionicons name="open-outline" size={17} color={colors.placeholder} />}
-                onPress={() => void Linking.openURL(`${session.apiOrigin}/${t.path}`)} />
+                onPress={() => {
+                  const workspace = session.isDemo ? 'demo' : empresaSlug;
+                  const url = workspace
+                    ? `${session.apiOrigin}/${workspace}/${t.path}`
+                    : `${session.apiOrigin}/${t.path}`;
+                  void Linking.openURL(url);
+                }} />
             </Fragment>)}
           </Card>
           <AppText variant="caption" style={styles.note}>Se abren en el navegador. Inicia sesión con tu misma cuenta.</AppText>
