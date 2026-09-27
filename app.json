@@ -53,7 +53,33 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
-      ]
-    ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "LunaLav usa tu ubicación para marcar el punto de recojo o entrega de un pedido.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LunaLav usa tus fotos para adjuntar evidencias del estado de las prendas.",
+          "cameraPermission": "LunaLav usa la cámara para fotografiar las prendas al recibirlas y entregarlas.",
+          "microphonePermission": false
+        }
+      ],
+      "@sentry/react-native"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

@@ -48,6 +48,17 @@ export interface Pedido {
   fechaEntregaEst?: string;
   modalidad: string;
   direccionEntrega?: string;
+  distritoEntrega?: string | null;
+  referenciaEntrega?: string | null;
+  latitudEntrega?: number | null;
+  longitudEntrega?: number | null;
+  clienteDni?: string | null;
+  clientePuntos?: number;
+  motorizadoId?: number | null;
+  motorizadoNombre?: string | null;
+  motorizadoCelular?: string | null;
+  areaActualId?: number | null;
+  codigoAntiguo?: string | null;
   subtotal: number;
   descuento: number;
   esUrgente: boolean;
@@ -111,7 +122,9 @@ export interface Sede { id: number; nombre: string; direccion?: string; activo: 
 export type MetodoPago = 'EFECTIVO' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'POS';
 export const METODOS_PAGO: MetodoPago[] = ['EFECTIVO', 'YAPE', 'PLIN', 'TRANSFERENCIA', 'POS'];
 
-export type Modalidad = 'Tienda' | 'Recojo';
+/** Tienda: el cliente trae y recoge. Recojo: se recoge en casa del cliente. Delivery: se entrega en una dirección con punto en el mapa. */
+export type Modalidad = 'Tienda' | 'Recojo' | 'Delivery';
+export const esDomicilio = (m?: string | null) => m === 'Recojo' || m === 'Delivery';
 export type FiltroPedidos = 'pendientes' | 'listos' | 'entregados' | 'ultimos';
 
 export interface PagedResult<T> { items: T[]; total: number; pagina: number; tamanoPagina: number }
@@ -120,13 +133,24 @@ export interface CrearPedidoPayload {
   clienteId?: number;
   clienteNuevo?: ClienteInput;
   modalidad: Modalidad;
-  items: { servicioId: number; cantidad: number; precioUnit: number; descripcion?: string }[];
+  direccionEntrega?: string | null;
+  distritoEntrega?: string | null;
+  referenciaEntrega?: string | null;
+  latitudEntrega?: number | null;
+  longitudEntrega?: number | null;
+  items: { servicioId: number; cantidad: number; precioUnit: number; descripcion?: string | null }[];
   descuentoPct: number;
+  codigoPromocion?: string | null;
+  puntosACanjear?: number | null;
   esUrgente: boolean;
+  recargoUrgentePct?: number;
+  costoDelivery?: number | null;
   montoPagado: number;
   metodoPagoInicial: MetodoPago;
+  /** Fecha y hora en hora local de Perú, sin zona ("2026-09-27T18:30:00"), como la envía la web. */
   fechaEntregaEst?: string;
   observaciones?: string;
+  areaInicialId?: number | null;
 }
 
 export interface RegistrarGastoPayload {

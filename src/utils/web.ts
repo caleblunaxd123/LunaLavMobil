@@ -14,3 +14,9 @@ export function useOpenWeb() {
     void Linking.openURL(workspace ? `${session.apiOrigin}/${workspace}/${path}` : `${session.apiOrigin}/${path}`);
   };
 }
+
+/** Página pública de LunaLav (seguimiento del pedido, enlace del repartidor), igual que la web: `/{ruta}/{token}`. */
+export function usePublicUrl() {
+  const origin = useAuthStore((s) => s.session?.apiOrigin);
+  return (path: string) => `${origin ?? 'https://app.lunalav.pe'}/${path}`;
+}

@@ -50,6 +50,51 @@ El logotipo oficial está en `assets/brand/` (SVG y PNG, con versión para fondo
 - inventario: stock bajo, favoritos, compras (que también registran el gasto en caja) y consumo;
 - pedidos atrasados resaltados; confirmaciones antes de acciones irreversibles.
 
+## Cuarto hito: paridad con LunaLav web (delivery, mapas y gestión)
+
+- **nuevo pedido en 4 pasos** (cliente → prendas → entrega → pago):
+  - cliente nuevo con DNI y saldo de puntos;
+  - notas por prenda, servicios por m² (ancho × largo × piezas) y **crear un servicio sin salir del pedido**;
+  - modalidad **tienda, recojo o delivery**; el delivery lleva dirección, distrito (50 de Lima y Callao),
+    referencia y **punto en el mapa** (buscar dirección, GPS o tocar el mapa, con dirección inversa);
+  - tarifa de delivery/recojo, **fecha y hora de entrega/recojo** con calendario, atajos y horarios
+    por turno, y área inicial;
+  - descuento con tope del negocio, código de promoción, canje de puntos, recargo urgente, adelanto,
+    fotos de recepción y mensaje de ingreso por WhatsApp con enlace de seguimiento;
+- **detalle de pedido completo**:
+  - avance por áreas de lavado;
+  - entrega total o parcial con cobro mixto y quién recibe;
+  - cambiar fecha con aviso al cliente, agregar prendas, convertir a delivery o editar el destino;
+  - asignar motorizado y enviarle la ruta;
+  - enlaces de seguimiento y pago, avisos «listo» y «en camino»;
+  - boleta, factura, ticket, corrección del método de pago y anulación;
+  - fotos de evidencia e historial;
+- **configuración desde el móvil**:
+  - crear, editar, ocultar o eliminar servicios, con unidad, costo, categoría y categorías nuevas;
+  - motorizados;
+  - ajustes del negocio: tarifa de delivery, puntos, tope de descuento, Yape y horario.
+
+Los mapas usan Leaflet, igual que la web, **embebido en la app** (`npm run build:leaflet` regenera
+`src/components/delivery/leafletAssets.ts`), así que no dependen de un CDN. Las imágenes del mapa salen de
+OpenStreetMap por defecto; para producción configura un proveedor con clave (`EXPO_PUBLIC_MAP_TILE_URL`,
+ver `.env.example`). En el teléfono se muestran en un `WebView` y la ubicación usa `expo-location`.
+
+## Preparación para tiendas
+
+- **Errores:** si una pantalla falla se muestra «Algo salió mal» con reintentar/reiniciar en vez de cerrarse
+  la app. Con `EXPO_PUBLIC_SENTRY_DSN` los errores se reportan a Sentry (sin datos personales de clientes;
+  solo id de usuario, negocio y rol). La subida de source maps está desactivada en `eas.json`
+  (`SENTRY_DISABLE_AUTO_UPLOAD`); para activarla define `SENTRY_ORG`, `SENTRY_PROJECT` y
+  `SENTRY_AUTH_TOKEN` como secretos de EAS y quita esa variable.
+- **Sin conexión:** aviso fijo en pantalla; las consultas esperan y se refrescan solas al volver la
+  señal (y al regresar a la app). Cobros y pedidos no quedan en cola: fallan al instante con un mensaje
+  claro para evitar duplicados.
+- **Actualizaciones OTA (EAS Update):** `runtimeVersion` sigue la versión de la app y los builds usan los
+  canales `preview` y `production`. Falta vincular el proyecto una vez con
+  `npx eas-cli@latest update:configure` (agrega `updates.url` y el `projectId`). Luego se publica con
+  `npx eas-cli@latest update --channel production -m "mensaje"`; la app descarga la versión nueva en
+  segundo plano y ofrece «Nueva versión lista · tocar para actualizar».
+
 ## Ejecutar
 
 ```powershell
@@ -78,12 +123,12 @@ Versión web (útil para revisar el diseño en el navegador): `npm run web`.
 ```powershell
 npm run lint
 npm run typecheck
+npm test
 ```
 
 ## Próximos hitos
 
-1. Cámara de prendas, QR y notificaciones push.
-2. Delivery con punto de entrega en mapa, entregas parciales, descuentos y canje de puntos.
-3. Cuadre de caja desde el móvil.
-4. Google Play Billing y StoreKit con validación en el backend.
-5. Beta cerrada en Google Play y TestFlight.
+1. Etiquetas QR y notificaciones push.
+2. Seguimiento en vivo del motorizado dentro de la app.
+3. Google Play Billing y StoreKit con validación en el backend.
+4. Beta cerrada en Google Play y TestFlight.
