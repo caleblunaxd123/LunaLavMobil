@@ -13,7 +13,6 @@
     },
     "android": {
       "package": "pe.lunalav.mobile",
-      "versionCode": 1,
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
