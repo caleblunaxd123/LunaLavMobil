@@ -1,17 +1,25 @@
 import {
   Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold, Montserrat_800ExtraBold, useFonts,
 } from '@expo-google-fonts/montserrat';
+import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from './src/api/queryClient';
+import { ErrorScreen } from './src/app-shell/ErrorScreen';
+import { initMonitoring } from './src/app-shell/monitoring';
+import { setupNetworkSync } from './src/app-shell/network';
+import { StatusBanners } from './src/app-shell/StatusBanners';
 import { LogoMark } from './src/components/brand';
 import { ToastHost } from './src/components/ui';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { colors } from './src/theme';
+
+initMonitoring();
+setupNetworkSync();
 
 export default function App() {
   const hydrated = useAuthStore((state) => state.hydrated);
@@ -38,7 +46,10 @@ export default function App() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <StatusBar style="dark" />
-        <AppNavigator />
+        <Sentry.ErrorBoundary fallback={({ resetError }) => <ErrorScreen onRetry={resetError} />}>
+          <AppNavigator />
+        </Sentry.ErrorBoundary>
+        <StatusBanners />
         <ToastHost />
       </QueryClientProvider>
     </SafeAreaProvider>

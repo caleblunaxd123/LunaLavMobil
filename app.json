@@ -71,7 +71,15 @@
           "cameraPermission": "LunaLav usa la cámara para fotografiar las prendas al recibirlas y entregarlas.",
           "microphonePermission": false
         }
-      ]
-    ]
+      ],
+      "@sentry/react-native"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
