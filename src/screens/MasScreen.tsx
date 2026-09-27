@@ -8,16 +8,18 @@ import { usePermissions, type Modulo } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, space } from '../theme';
+import { useOpenWeb } from '../utils/web';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-// Módulos que todavía se gestionan desde la web; se abren en el navegador con la misma cuenta.
-const webTools: { label: string; hint: string; icon: IconName; path: string; module: Modulo }[] = [
-  { label: 'Reportes', hint: 'Ventas, servicios y clientes', icon: 'bar-chart-outline', path: 'reportes', module: 'INICIO' },
-  { label: 'Cuadre de caja', hint: 'Cierre del día e impresión', icon: 'calculator-outline', path: 'cuadre-caja', module: 'CAJA' },
-  { label: 'Facturación electrónica', hint: 'Boletas y facturas SUNAT', icon: 'document-text-outline', path: 'facturacion/comprobantes', module: 'PEDIDOS' },
-  { label: 'Promociones', hint: 'Códigos y descuentos', icon: 'pricetag-outline', path: 'promociones', module: 'AJUSTES' },
-  { label: 'Configuración', hint: 'Servicios, usuarios, permisos', icon: 'settings-outline', path: 'ajustes', module: 'AJUSTES' },
+// Módulos de gestión: se usan en el celular y cada pantalla tiene un atajo para abrirla en la web.
+type Gestion = 'Reportes' | 'CuadreCaja' | 'Comprobantes' | 'Promociones' | 'Configuracion';
+const gestion: { label: string; hint: string; icon: IconName; screen: Gestion; module: Modulo; adminOnly?: boolean }[] = [
+  { label: 'Reportes', hint: 'Ventas, servicios y cobros del mes', icon: 'bar-chart-outline', screen: 'Reportes', module: 'REPORTES' },
+  { label: 'Cuadre de caja', hint: 'Cierre del día', icon: 'calculator-outline', screen: 'CuadreCaja', module: 'CAJA' },
+  { label: 'Comprobantes', hint: 'Boletas y facturas SUNAT', icon: 'document-text-outline', screen: 'Comprobantes', module: 'PEDIDOS' },
+  { label: 'Promociones', hint: 'Descuentos y códigos', icon: 'pricetag-outline', screen: 'Promociones', module: 'PROMOCIONES', adminOnly: true },
+  { label: 'Configuración', hint: 'Precios, usuarios y ajustes', icon: 'settings-outline', screen: 'Configuracion', module: 'AJUSTES', adminOnly: true },
 ];
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
@@ -32,8 +34,9 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
   const logout = useAuthStore((s) => s.logout);
   const empresaSlug = useAuthStore((s) => s.lastLogin?.empresaSlug);
   const can = usePermissions();
+  const openWeb = useOpenWeb();
   const { usuario } = session;
-  const tools = webTools.filter((t) => can(t.module));
+  const tools = gestion.filter((t) => can(t.module) && (!t.adminOnly || usuario.rol === 'ADMIN'));
 
   const confirmLogout = () => Alert.alert('Cerrar sesión', '¿Quieres salir de LunaLav en este dispositivo?', [
     { text: 'Cancelar', style: 'cancel' },
@@ -95,22 +98,18 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
           </Card>
         </Section>
 
-        {tools.length > 0 && <Section title="En LunaLav web">
+        {tools.length > 0 && <Section title="Gestión">
           <Card padded={false}>
-            {tools.map((t, i) => <Fragment key={t.path}>
+            {tools.map((t, i) => <Fragment key={t.screen}>
               {i > 0 && <Divider inset={68} />}
               <ListItem title={t.label} subtitle={t.hint} leading={<Icon name={t.icon} tint={colors.navySoft} />}
-                trailing={<Ionicons name="open-outline" size={17} color={colors.placeholder} />}
-                onPress={() => {
-                  const workspace = session.isDemo ? 'demo' : empresaSlug;
-                  const url = workspace
-                    ? `${session.apiOrigin}/${workspace}/${t.path}`
-                    : `${session.apiOrigin}/${t.path}`;
-                  void Linking.openURL(url);
-                }} />
+                chevron onPress={() => navigation.navigate(t.screen)} />
             </Fragment>)}
+            <Divider inset={68} />
+            <ListItem title="Abrir LunaLav web" subtitle="Todo el sistema en el navegador" leading={<Icon name="desktop-outline" tint={colors.teal} />}
+              trailing={<Ionicons name="open-outline" size={17} color={colors.placeholder} />} onPress={() => openWeb('inicio')} />
           </Card>
-          <AppText variant="caption" style={styles.note}>Se abren en el navegador. Inicia sesión con tu misma cuenta.</AppText>
+          <AppText variant="caption" style={styles.note}>Cada módulo tiene el botón <Ionicons name="open-outline" size={12} color={colors.muted} /> para verlo en la web con tu misma cuenta.</AppText>
         </Section>}
 
         <Section title="Ayuda y cuenta">

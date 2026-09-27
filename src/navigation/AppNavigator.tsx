@@ -7,6 +7,9 @@ import { CajaScreen } from '../screens/CajaScreen';
 import { ClienteDetalleScreen } from '../screens/ClienteDetalleScreen';
 import { ClienteFormScreen } from '../screens/ClienteFormScreen';
 import { ClientesScreen } from '../screens/ClientesScreen';
+import { ComprobantesScreen } from '../screens/ComprobantesScreen';
+import { ConfiguracionScreen } from '../screens/ConfiguracionScreen';
+import { CuadreCajaScreen } from '../screens/CuadreCajaScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { GastoFormScreen } from '../screens/GastoFormScreen';
 import { InventarioScreen } from '../screens/InventarioScreen';
@@ -14,7 +17,9 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { MasScreen } from '../screens/MasScreen';
 import { NuevoPedidoScreen } from '../screens/NuevoPedidoScreen';
 import { PedidoDetalleScreen } from '../screens/PedidoDetalleScreen';
+import { PromocionesScreen } from '../screens/PromocionesScreen';
 import { RegistroScreen } from '../screens/RegistroScreen';
+import { ReportesScreen } from '../screens/ReportesScreen';
 import { PedidosScreen } from '../screens/PedidosScreen';
 import { SeleccionarSedeScreen } from '../screens/SeleccionarSedeScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
@@ -65,6 +70,11 @@ function MainNavigator({ needsSede }: { needsSede: boolean }) {
         <AppStack.Screen name="PedidoDetalle" component={PedidoDetalleScreen} />
         <AppStack.Screen name="ClienteDetalle" component={ClienteDetalleScreen} />
         <AppStack.Screen name="Inventario" component={InventarioScreen} />
+        <AppStack.Screen name="Reportes" component={ReportesScreen} />
+        <AppStack.Screen name="CuadreCaja" component={CuadreCajaScreen} />
+        <AppStack.Screen name="Comprobantes" component={ComprobantesScreen} />
+        <AppStack.Screen name="Promociones" component={PromocionesScreen} />
+        <AppStack.Screen name="Configuracion" component={ConfiguracionScreen} />
         <AppStack.Group screenOptions={{ presentation: 'modal', animation: 'slide_from_bottom' }}>
           <AppStack.Screen name="NuevoPedido" component={NuevoPedidoScreen} />
           <AppStack.Screen name="ClienteForm" component={ClienteFormScreen} />

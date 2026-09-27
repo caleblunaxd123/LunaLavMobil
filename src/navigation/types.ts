@@ -15,6 +15,11 @@ export type AppStackParamList = {
   NuevoGasto: undefined;
   Inventario: undefined;
   SeleccionarSede: undefined;
+  Reportes: undefined;
+  CuadreCaja: undefined;
+  Comprobantes: undefined;
+  Promociones: undefined;
+  Configuracion: undefined;
 };
 
 export type AppScreenProps<T extends keyof AppStackParamList> = NativeStackScreenProps<AppStackParamList, T>;

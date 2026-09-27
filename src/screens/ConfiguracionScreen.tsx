@@ -1,0 +1,216 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Fragment, useMemo, useRef, useState } from 'react';
+import { Alert, FlatList, RefreshControl, StyleSheet, Switch, View } from 'react-native';
+import { apiErrorMessage } from '../api/errors';
+import {
+  actualizarServicio, cambiarEstadoUsuario, getServiciosAdmin, getUsuariosAdmin, type ServicioEditable, type UsuarioAdmin,
+} from '../api/gestionApi';
+import {
+  AppText, Avatar, Badge, Button, Card, Divider, EmptyState, ErrorState, IconButton, InlineAlert, ListItem, ListSkeleton, LockedState,
+  Pager, Screen, SearchBar, SegmentedControl, Sheet, StackHeader, TextField, toast,
+} from '../components/ui';
+import { usePagination } from '../hooks/usePagination';
+import { usePermissions } from '../hooks/usePermissions';
+import type { AppScreenProps } from '../navigation/types';
+import { useAuthStore } from '../store/authStore';
+import { colors, space } from '../theme';
+import { money, parseAmount } from '../utils/format';
+import { useOpenWeb } from '../utils/web';
+
+type Tab = 'servicios' | 'usuarios' | 'mas';
+type IconName = keyof typeof Ionicons.glyphMap;
+
+const normalize = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+// Ajustes que se configuran una sola vez o necesitan pantalla grande: quedan en la web.
+const webSettings: { label: string; hint: string; icon: IconName; path: string }[] = [
+  { label: 'Datos del negocio', hint: 'Nombre, RUC, logo y ticket', icon: 'business-outline', path: 'ajustes/negocio' },
+  { label: 'Permisos por rol', hint: 'Qué módulos ve cada usuario', icon: 'key-outline', path: 'ajustes/permisos' },
+  { label: 'Categorías de servicio', hint: 'Agrupa tu lista de precios', icon: 'albums-outline', path: 'ajustes/categorias' },
+  { label: 'Tipos de gasto', hint: 'Para ordenar los gastos de caja', icon: 'wallet-outline', path: 'ajustes/tipos-gasto' },
+  { label: 'Áreas de lavado', hint: 'Etapas por las que pasa un pedido', icon: 'git-branch-outline', path: 'ajustes/areas' },
+  { label: 'Motorizados', hint: 'Repartidores y entregas a domicilio', icon: 'bicycle-outline', path: 'ajustes/motorizados' },
+  { label: 'Facturación electrónica', hint: 'Conexión con SUNAT', icon: 'document-text-outline', path: 'ajustes' },
+];
+
+export function ConfiguracionScreen({ navigation }: AppScreenProps<'Configuracion'>) {
+  const isAdmin = useAuthStore((s) => s.session?.usuario.rol === 'ADMIN');
+  const can = usePermissions();
+  const openWeb = useOpenWeb();
+  const [tab, setTab] = useState<Tab>('servicios');
+  // Servicios y usuarios se administran solo con rol ADMIN (igual que en la web).
+  const allowed = isAdmin && can('AJUSTES');
+  const webButton = <IconButton icon="open-outline" label="Abrir configuración en la web" onPress={() => openWeb('ajustes')} />;
+
+  if (!allowed) return <Screen><StackHeader title="Configuración" onBack={navigation.goBack} /><View style={styles.content}><LockedState module="cambiar la configuración" /></View></Screen>;
+
+  return (
+    <Screen>
+      <StackHeader title="Configuración" subtitle="Precios, equipo y ajustes" onBack={navigation.goBack} right={webButton} />
+      <View style={styles.tabs}>
+        <SegmentedControl<Tab> value={tab} onChange={setTab} segments={[
+          { value: 'servicios', label: 'Precios' }, { value: 'usuarios', label: 'Usuarios' }, { value: 'mas', label: 'Más ajustes' },
+        ]} />
+      </View>
+      {tab === 'servicios' ? <ServiciosTab onWeb={() => openWeb('ajustes/servicios')} />
+        : tab === 'usuarios' ? <UsuariosTab onWeb={() => openWeb('ajustes/usuarios')} />
+          : <FlatList data={[0]} keyExtractor={String} contentContainerStyle={styles.content} renderItem={() => <>
+            <Card padded={false}>
+              {webSettings.map((s, i) => <Fragment key={s.path + s.label}>
+                {i > 0 && <Divider inset={68} />}
+                <ListItem title={s.label} subtitle={s.hint} onPress={() => openWeb(s.path)}
+                  leading={<View style={styles.icon}><Ionicons name={s.icon} size={19} color={colors.navySoft} /></View>}
+                  trailing={<Ionicons name="open-outline" size={17} color={colors.placeholder} />} />
+              </Fragment>)}
+            </Card>
+            <AppText variant="caption" style={styles.note}>Estos ajustes se hacen una sola vez; se abren en el navegador con tu misma cuenta.</AppText>
+          </>} />}
+    </Screen>
+  );
+}
+
+function ServiciosTab({ onWeb }: { onWeb: () => void }) {
+  const negocioId = useAuthStore((s) => s.session?.usuario.negocioId);
+  const listRef = useRef<FlatList>(null);
+  const [texto, setTexto] = useState('');
+  const [editing, setEditing] = useState<ServicioEditable | null>(null);
+  const query = useQuery({ queryKey: ['servicios-admin', negocioId], queryFn: getServiciosAdmin });
+  const filtered = useMemo(() => {
+    const t = normalize(texto.trim());
+    return (query.data ?? [])
+      .filter((s) => !t || normalize(`${s.nombre} ${s.categoriaNombre ?? ''}`).includes(t))
+      .sort((a, b) => Number(b.activo) - Number(a.activo) || a.nombre.localeCompare(b.nombre));
+  }, [query.data, texto]);
+  const { page, setPage, pageItems, total, pageSize } = usePagination(filtered, 20, texto);
+
+  return <>
+    <FlatList
+      ref={listRef}
+      data={pageItems}
+      keyExtractor={(item) => String(item.id)}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
+      ListHeaderComponent={<View style={styles.header}>
+        <SearchBar value={texto} onChangeText={setTexto} placeholder="Buscar servicio o categoría" />
+        <AppText variant="caption">Toca un servicio para cambiar su precio. Para crear servicios o importarlos desde Excel usa la web.</AppText>
+      </View>}
+      ListEmptyComponent={query.isLoading ? <ListSkeleton /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} />
+        : <EmptyState icon="shirt-outline" title={texto ? 'Sin coincidencias' : 'Sin servicios'} text={texto ? 'Prueba con otra palabra.' : 'Crea tu lista de precios desde la web.'}
+          actionLabel={texto ? undefined : 'Abrir en la web'} onAction={onWeb} />}
+      renderItem={({ item: s }) => (
+        <Card onPress={() => setEditing(s)} style={[styles.row, !s.activo && styles.inactive]}>
+          <View style={styles.flex}>
+            <AppText variant="subheading" numberOfLines={1}>{s.nombre}</AppText>
+            <AppText variant="caption" numberOfLines={1}>{[s.categoriaNombre, `por ${s.unidad.toLowerCase()}`].filter(Boolean).join(' · ')}</AppText>
+          </View>
+          {!s.activo && <Badge label="Oculto" tone="neutral" dot={false} />}
+          <AppText variant="subheading">{money(s.precio)}</AppText>
+        </Card>
+      )}
+      ListFooterComponent={<Pager page={page} pageSize={pageSize} total={total}
+        onChange={(p) => { setPage(p); listRef.current?.scrollToOffset({ offset: 0, animated: true }); }} />}
+    />
+    {editing && <ServicioSheet servicio={editing} onClose={() => setEditing(null)} />}
+  </>;
+}
+
+function ServicioSheet({ servicio, onClose }: { servicio: ServicioEditable; onClose: () => void }) {
+  const negocioId = useAuthStore((s) => s.session?.usuario.negocioId);
+  const queryClient = useQueryClient();
+  const [nombre, setNombre] = useState(servicio.nombre);
+  const [precio, setPrecio] = useState(servicio.precio.toFixed(2));
+  const [activo, setActivo] = useState(servicio.activo);
+  const amount = parseAmount(precio);
+  const precioError = precio && (!Number.isFinite(amount) || amount <= 0 || amount > 10_000) ? 'Ingresa un precio entre 0.01 y 10 000' : undefined;
+  const nombreError = nombre.trim().length < 2 ? 'Escribe el nombre del servicio' : undefined;
+  const save = useMutation({
+    mutationFn: () => actualizarServicio({ ...servicio, nombre: nombre.trim(), precio: amount, activo }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['servicios-admin', negocioId] }),
+        queryClient.invalidateQueries({ queryKey: ['servicios'] }),
+      ]);
+      toast('Servicio actualizado');
+      onClose();
+    },
+  });
+  return (
+    <Sheet visible onClose={onClose} title="Editar servicio" subtitle={servicio.categoriaNombre ?? undefined}>
+      <TextField label="Nombre" value={nombre} onChangeText={setNombre} maxLength={120} autoCapitalize="sentences" error={nombreError} />
+      <TextField label={`Precio por ${servicio.unidad.toLowerCase()}`} prefix="S/" keyboardType="decimal-pad" value={precio} onChangeText={setPrecio} error={precioError}
+        hint="Los pedidos ya registrados mantienen su precio" />
+      <View style={styles.switchRow}>
+        <View style={styles.flex}>
+          <AppText variant="subheading">Disponible para nuevos pedidos</AppText>
+          <AppText variant="caption">{activo ? 'Aparece al registrar un pedido' : 'Queda oculto, sin borrar su historial'}</AppText>
+        </View>
+        <Switch value={activo} onValueChange={setActivo} trackColor={{ true: colors.teal, false: colors.borderStrong }} thumbColor="#FFFFFF" />
+      </View>
+      {save.isError && <InlineAlert title="No se pudo guardar" text={apiErrorMessage(save.error)} />}
+      <Button label="Guardar cambios" icon="checkmark" onPress={() => save.mutate()} busy={save.isPending} disabled={!!precioError || !!nombreError || !precio} />
+    </Sheet>
+  );
+}
+
+function UsuariosTab({ onWeb }: { onWeb: () => void }) {
+  const me = useAuthStore((s) => s.session?.usuario);
+  const queryClient = useQueryClient();
+  const key = ['usuarios-admin', me?.negocioId];
+  const query = useQuery({ queryKey: key, queryFn: getUsuariosAdmin });
+  const toggle = useMutation({
+    mutationFn: (u: UsuarioAdmin) => cambiarEstadoUsuario(u.id, !u.activo),
+    onMutate: (u) => queryClient.setQueryData<UsuarioAdmin[]>(key, (list) => list?.map((x) => (x.id === u.id ? { ...x, activo: !u.activo } : x))),
+    onSuccess: (_, u) => toast(u.activo ? `${u.nombreCompleto} ya no puede entrar` : `${u.nombreCompleto} puede volver a entrar`),
+    onError: (e) => { toast(apiErrorMessage(e), 'error'); void query.refetch(); },
+  });
+  const confirm = (u: UsuarioAdmin) => {
+    if (!u.activo) { toggle.mutate(u); return; }
+    Alert.alert('Desactivar usuario', `${u.nombreCompleto} no podrá iniciar sesión hasta que lo actives otra vez. Sus pedidos y cobros se conservan.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Desactivar', style: 'destructive', onPress: () => toggle.mutate(u) },
+    ]);
+  };
+  const users = [...(query.data ?? [])].sort((a, b) => Number(b.activo) - Number(a.activo) || a.nombreCompleto.localeCompare(b.nombreCompleto));
+
+  return (
+    <FlatList
+      data={users}
+      keyExtractor={(item) => String(item.id)}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
+      ListHeaderComponent={<View style={styles.header}>
+        <Button label="Crear usuario o cambiar su clave en la web" icon="person-add-outline" variant="secondary" size="md" onPress={onWeb} />
+      </View>}
+      ListEmptyComponent={query.isLoading ? <ListSkeleton /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} /> : null}
+      renderItem={({ item: u }) => {
+        const self = u.id === me?.id;
+        return (
+          <Card style={[styles.row, !u.activo && styles.inactive]}>
+            <Avatar name={u.nombreCompleto} size={40} tone={u.activo ? 'primary' : 'neutral'} />
+            <View style={styles.flex}>
+              <AppText variant="subheading" numberOfLines={1}>{u.nombreCompleto}{self ? ' (tú)' : ''}</AppText>
+              <AppText variant="caption" numberOfLines={1}>@{u.usuario} · {[u.rolNombre, u.sedeNombre].filter(Boolean).join(' · ')}</AppText>
+            </View>
+            {self ? <Badge label="Activo" tone="success" /> : <Switch value={u.activo} onValueChange={() => confirm(u)}
+              accessibilityLabel={u.activo ? `Desactivar a ${u.nombreCompleto}` : `Activar a ${u.nombreCompleto}`}
+              trackColor={{ true: colors.teal, false: colors.borderStrong }} thumbColor="#FFFFFF" />}
+          </Card>
+        );
+      }}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, gap: 2 },
+  tabs: { paddingHorizontal: space.lg, paddingBottom: space.sm },
+  content: { padding: space.lg, paddingTop: space.sm, paddingBottom: space.xxxl, flexGrow: 1 },
+  header: { gap: space.md, marginBottom: space.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm, padding: space.md },
+  inactive: { opacity: 0.6 },
+  icon: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: `${colors.navySoft}14` },
+  note: { marginTop: space.sm, paddingHorizontal: space.xs },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+});
