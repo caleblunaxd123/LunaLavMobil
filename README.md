@@ -90,8 +90,8 @@ ver `.env.example`). En el teléfono se muestran en un `WebView` y la ubicación
   señal (y al regresar a la app). Cobros y pedidos no quedan en cola: fallan al instante con un mensaje
   claro para evitar duplicados.
 - **Actualizaciones OTA (EAS Update):** `runtimeVersion` sigue la versión de la app y los builds usan los
-  canales `preview` y `production`. Falta vincular el proyecto una vez con
-  `npx eas-cli@latest update:configure` (agrega `updates.url` y el `projectId`). Luego se publica con
+  canales `preview` y `production`. El proyecto ya está vinculado a EAS (`@calebluna41/lunalav-mobile`,
+  `updates.url` y `projectId` en `app.json`, canales creados). Se publica con
   `npx eas-cli@latest update --channel production -m "mensaje"`; la app descarga la versión nueva en
   segundo plano y ofrece «Nueva versión lista · tocar para actualizar».
 

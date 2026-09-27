@@ -79,7 +79,14 @@
     },
     "updates": {
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
-    }
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/20c2483f-813d-4731-a92c-d9468f3ed5f6"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "20c2483f-813d-4731-a92c-d9468f3ed5f6"
+      }
+    },
+    "owner": "calebluna41"
   }
 }
