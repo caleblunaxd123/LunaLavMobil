@@ -243,3 +243,72 @@ export async function getUsuariosAdmin() {
 export async function cambiarEstadoUsuario(id: number, activo: boolean) {
   await api.patch(`/api/usuarios/${id}/estado`, { activo });
 }
+
+export type ServicioNuevo = Omit<ServicioEditable, 'id' | 'enUso' | 'categoriaNombre'>;
+
+export async function crearServicioAdmin(servicio: ServicioNuevo) {
+  const { data } = await api.post<ServicioEditable>('/api/servicios-admin', { ...servicio, id: 0 });
+  return data;
+}
+
+/** Elimina el servicio si nunca se usó; si ya está en pedidos, el backend lo desactiva. */
+export async function eliminarServicio(id: number) {
+  const { data } = await api.delete<{ mensaje: string; eliminado: boolean }>(`/api/servicios-admin/${id}`);
+  return data;
+}
+
+export interface Categoria { id: number; nombre: string; activa: boolean; enUso: boolean }
+
+export async function getCategorias() {
+  const { data } = await api.get<Categoria[]>('/api/categorias');
+  return data;
+}
+
+export async function crearCategoria(nombre: string) {
+  const { data } = await api.post<Categoria>('/api/categorias', { id: 0, nombre, activa: true });
+  return data;
+}
+
+// ---------- Motorizados (administración) ----------
+
+export interface MotorizadoAdmin { id: number; nombre: string; celular?: string | null; activo: boolean }
+
+export async function getMotorizadosTodos() {
+  const { data } = await api.get<MotorizadoAdmin[]>('/api/motorizados/todos');
+  return data;
+}
+
+export async function guardarMotorizado(m: MotorizadoAdmin) {
+  const body = { ...m, celular: m.celular?.trim() || null };
+  if (m.id) { await api.put(`/api/motorizados/${m.id}`, body); return; }
+  await api.post('/api/motorizados', body);
+}
+
+export async function cambiarEstadoMotorizado(id: number, activo: boolean) {
+  await api.patch(`/api/motorizados/${id}/estado`, { activo });
+}
+
+// ---------- Datos del negocio ----------
+
+/** La configuración completa: el PUT reemplaza todos los campos, así que se envía lo leído con los cambios. */
+export type ConfiguracionCompleta = Record<string, unknown> & {
+  nombreNegocio: string;
+  direccion?: string | null;
+  telefono?: string | null;
+  horarioAtencion?: string | null;
+  costoDelivery: number;
+  valorPuntoCanje: number;
+  maxDescuentoPct: number;
+  solesPorPunto: number;
+  yapeNumero?: string | null;
+  yapeTitular?: string | null;
+};
+
+export async function getConfiguracionCompleta() {
+  const { data } = await api.get<ConfiguracionCompleta>('/api/configuracion');
+  return data;
+}
+
+export async function guardarConfiguracion(cfg: ConfiguracionCompleta) {
+  await api.put('/api/configuracion', cfg);
+}
