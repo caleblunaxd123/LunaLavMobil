@@ -7,7 +7,7 @@ const RESERVED_SLUGS = new Set([
   'clientes', 'promociones', 'reportes', 'inventario', 'ajustes', 'facturacion', 'assets', 'plataforma',
   'seguimiento', 'repartidor', 'recibo-suscripcion', 'privacidad', 'terminos', 'nosotros', 'marketing', 'demo',
   // Reservados también por el alta del servidor (RegistroPublicoController).
-  'api', 'admin', 'app', 'soporte', 'caja', 'eliminar-cuenta',
+  'api', 'admin', 'app', 'soporte', 'caja', 'eliminar-cuenta', 'pagar',
 ]);
 
 /** "Lavandería Doña Rosa" → "lavanderia-dona-rosa" */
