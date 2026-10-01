@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { getConsolidado, getVistaGerencial, type VistaGerencial } from '../api/gestionApi';
-import { AppText, Button, Card, Divider, ErrorState, IconButton, Kpi, ListSkeleton, LockedState, Screen, Section, StackHeader } from '../components/ui';
+import { REPORTES } from '../api/reportesApi';
+import { AppText, Card, Divider, ErrorState, IconButton, Kpi, ListItem, ListSkeleton, LockedState, Screen, Section, StackHeader } from '../components/ui';
 import { usePermissions } from '../hooks/usePermissions';
 import type { AppScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -82,11 +83,17 @@ export function ReportesScreen({ navigation }: AppScreenProps<'Reportes'>) {
             </Card>
           </Section>}
 
-          <Card style={styles.webCard}>
-            <AppText variant="subheading">¿Necesitas el detalle?</AppText>
-            <AppText variant="caption">En la web tienes todos los reportes por fechas, exportables a Excel: pagos, gastos, cuadres, anulados, entregas y más.</AppText>
-            <Button label="Ver reportes completos en la web" icon="open-outline" variant="secondary" size="md" onPress={() => openWeb('reportes')} />
-          </Card>
+          <Section title="Reportes detallados">
+            <AppText variant="caption" style={styles.detailHint}>Por rango de fechas, con tabla y exportación a Excel (.xlsx) para compartir o abrir en tu computadora.</AppText>
+            <Card padded={false}>
+              {REPORTES.map((r, i) => <View key={r.clave}>
+                {i > 0 && <Divider inset={60} />}
+                <ListItem title={r.titulo} subtitle={r.descripcion} chevron
+                  leading={<Ionicons name={r.icono} size={22} color={colors.primary} />}
+                  onPress={() => navigation.navigate('ReporteDetalle', { clave: r.clave })} />
+              </View>)}
+            </Card>
+          </Section>
         </>}
       </ScrollView>
     </Screen>
@@ -231,5 +238,5 @@ const styles = StyleSheet.create({
   mixAmount: { minWidth: 92, textAlign: 'right' },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  webCard: { gap: space.sm },
+  detailHint: { marginBottom: space.sm },
 });

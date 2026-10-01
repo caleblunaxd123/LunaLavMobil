@@ -19,9 +19,11 @@ import { NuevoPedidoScreen } from '../screens/NuevoPedidoScreen';
 import { PedidoDetalleScreen } from '../screens/PedidoDetalleScreen';
 import { PromocionesScreen } from '../screens/PromocionesScreen';
 import { RegistroScreen } from '../screens/RegistroScreen';
+import { ReporteDetalleScreen } from '../screens/ReporteDetalleScreen';
 import { ReportesScreen } from '../screens/ReportesScreen';
 import { PedidosScreen } from '../screens/PedidosScreen';
 import { SeleccionarSedeScreen } from '../screens/SeleccionarSedeScreen';
+import { TicketScreen } from '../screens/TicketScreen';
 import { WelcomeScreen } from '../screens/WelcomeScreen';
 import { useAuthStore } from '../store/authStore';
 import { colors, fonts } from '../theme';
@@ -68,9 +70,11 @@ function MainNavigator({ needsSede }: { needsSede: boolean }) {
       : <>
         <AppStack.Screen name="Tabs" component={TabsNavigator} />
         <AppStack.Screen name="PedidoDetalle" component={PedidoDetalleScreen} />
+        <AppStack.Screen name="Ticket" component={TicketScreen} />
         <AppStack.Screen name="ClienteDetalle" component={ClienteDetalleScreen} />
         <AppStack.Screen name="Inventario" component={InventarioScreen} />
         <AppStack.Screen name="Reportes" component={ReportesScreen} />
+        <AppStack.Screen name="ReporteDetalle" component={ReporteDetalleScreen} />
         <AppStack.Screen name="CuadreCaja" component={CuadreCajaScreen} />
         <AppStack.Screen name="Comprobantes" component={ComprobantesScreen} />
         <AppStack.Screen name="Promociones" component={PromocionesScreen} />

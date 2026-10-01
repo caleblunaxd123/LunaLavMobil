@@ -28,7 +28,7 @@ import { colors, fonts, space } from '../theme';
 import {
   dateTime, isPastDay, methodLabel, money, parseAmount, paymentLabel, paymentTone, PROCESS_STEPS, processLabel, processTone, quantityLabel, relativeDay,
 } from '../utils/format';
-import { useOpenWeb, usePublicUrl } from '../utils/web';
+import { usePublicUrl } from '../utils/web';
 import { abrirWhatsapp, mensajeEnCamino, mensajeIngreso, mensajeListo } from '../utils/whatsapp';
 
 const FINAL_STATES = ['ENTREGADO', 'DONADO', 'ANULADO'];
@@ -54,7 +54,6 @@ export function PedidoDetalleScreen({ navigation, route }: AppScreenProps<'Pedid
   const rol = useAuthStore((s) => s.session?.usuario.rol);
   const negocioId = useAuthStore((s) => s.session?.usuario.negocioId);
   const publicUrl = usePublicUrl();
-  const openWeb = useOpenWeb();
   const config = useConfiguracion();
   const pedido = useQuery({ queryKey: ['pedido', id], queryFn: () => getPedido(id) });
   const pagos = useQuery({ queryKey: ['pedido', id, 'pagos'], queryFn: () => getPagosPedido(id) });
@@ -160,7 +159,7 @@ export function PedidoDetalleScreen({ navigation, route }: AppScreenProps<'Pedid
     { icon: 'person-outline', label: p.motorizadoNombre ? `Motorizado: ${p.motorizadoNombre}` : 'Asignar motorizado', onPress: () => setModal('motorizado'), hidden: !domicilio || isFinal },
     { icon: 'receipt-outline', label: 'Emitir boleta electrónica', onPress: () => comprobante.mutate('BOLETA'), hidden: p.anulado },
     { icon: 'document-text-outline', label: 'Emitir factura electrónica', hint: 'El cliente debe tener RUC', onPress: () => comprobante.mutate('FACTURA'), hidden: p.anulado },
-    { icon: 'print-outline', label: 'Ver e imprimir ticket', hint: 'Se abre en LunaLav web', onPress: () => openWeb(`ticket/${p.id}`) },
+    { icon: 'print-outline', label: 'Ticket: ver, imprimir o compartir PDF', hint: 'Cliente o producción, 58/80 mm', onPress: () => { setModal(null); navigation.navigate('Ticket', { id: p.id }); } },
     { icon: 'close-circle-outline', label: 'Anular pedido', onPress: () => setModal('anular'), danger: true, hidden: isFinal || !puedeAnular },
   ];
 

@@ -17,6 +17,7 @@ import { useAuthStore } from '../store/authStore';
 import { colors, space } from '../theme';
 import { dateTime, money, plural } from '../utils/format';
 import { useOpenWeb } from '../utils/web';
+import { compartirComprobante, type FormatoComprobante } from '../api/documentosApi';
 
 const tipoLabel: Record<string, string> = {
   BOLETA: 'Boleta', FACTURA: 'Factura', NOTA_CREDITO: 'Nota de crédito', NOTA_DEBITO: 'Nota de débito', GUIA_REMISION: 'Guía de remisión',
@@ -127,6 +128,14 @@ function ComprobanteSheet({ id, onClose, onPedido, onWeb }: { id: number | null;
       toast(c.estado === 'ACEPTADO' ? 'SUNAT ya aceptó el comprobante' : 'Estado actualizado');
     },
   });
+  const [descargando, setDescargando] = useState<FormatoComprobante | null>(null);
+  const descargar = async (formato: FormatoComprobante) => {
+    if (!c) return;
+    setDescargando(formato);
+    try { await compartirComprobante(c.id, c.numeroCompleto, formato); }
+    catch (error) { toast(error instanceof Error && error.message ? error.message : 'No se pudo descargar el archivo.', 'error'); }
+    finally { setDescargando(null); }
+  };
   const c = detail.data;
   const e = c ? estadoDe(c) : null;
   return (
@@ -156,7 +165,12 @@ function ComprobanteSheet({ id, onClose, onPedido, onWeb }: { id: number | null;
         <View style={styles.actions}>
           {c.estado === 'PENDIENTE' && <Button label="Consultar estado en SUNAT" icon="refresh" variant="secondary" size="md" busy={sync.isPending} onPress={() => sync.mutate()} />}
           <Button label={`Ver pedido${c.pedidoNumero ? ` #${c.pedidoNumero}` : ''}`} icon="receipt-outline" variant="secondary" size="md" onPress={() => onPedido(c.pedidoId)} />
-          <Button label="PDF, anular o nota de crédito en la web" icon="open-outline" variant="ghost" size="md" onPress={onWeb} />
+          <View style={styles.downloads}>
+            <Button label="PDF" icon="document-outline" variant="secondary" size="md" style={styles.flex} busy={descargando === 'pdf'} disabled={descargando !== null} onPress={() => void descargar('pdf')} />
+            {!c.esSimulado && <Button label="XML" icon="code-slash-outline" variant="secondary" size="md" style={styles.flex} busy={descargando === 'xml'} disabled={descargando !== null} onPress={() => void descargar('xml')} />}
+            {c.estado === 'ACEPTADO' && !c.esSimulado && <Button label="CDR" icon="shield-checkmark-outline" variant="secondary" size="md" style={styles.flex} busy={descargando === 'cdr'} disabled={descargando !== null} onPress={() => void descargar('cdr')} />}
+          </View>
+          <Button label="Anular o nota de crédito en la web" icon="open-outline" variant="ghost" size="md" onPress={onWeb} />
         </View>
       </>}
     </Sheet>
@@ -177,4 +191,5 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.sm + 2 },
   more: { paddingHorizontal: space.lg, paddingBottom: space.sm },
   actions: { gap: space.sm },
+  downloads: { flexDirection: 'row', gap: space.sm },
 });

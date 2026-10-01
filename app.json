@@ -71,7 +71,8 @@
           "microphonePermission": false
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-sharing"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

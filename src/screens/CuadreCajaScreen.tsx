@@ -10,6 +10,10 @@ import {
   AppText, Badge, Button, Card, Choice, Divider, ErrorState, IconButton, InlineAlert, ListSkeleton, LockedState,
   Screen, Section, StackHeader, TextField, toast,
 } from '../components/ui';
+import { construirCuadreHtml } from '../documents/cuadreHtml';
+import { compartirHtmlComoPdf, imprimirHtml } from '../documents/pdf';
+import { resolverLogo } from '../documents/ticketHtml';
+import { useConfiguracion } from '../hooks/useConfiguracion';
 import { usePermissions } from '../hooks/usePermissions';
 import type { AppScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -81,7 +85,7 @@ export function CuadreCajaScreen({ navigation }: AppScreenProps<'CuadreCaja'>) {
         </View>}
 
         {loading ? <ListSkeleton rows={4} /> : failed ? <ErrorState onRetry={refetchAll} /> : cuadre.data
-          ? <CuadreGuardado c={cuadre.data} onPrint={() => openWeb('cuadre-caja')} />
+          ? <CuadreGuardado c={cuadre.data} />
           : <CuadreForm key={`${fecha}-${usuarioId}`} totals={totals} sugerido={anterior.data?.cajaFinal ?? 0}
             onSave={async (form) => {
               const saved = await guardarCuadre({ fecha, usuarioId, ...form });
@@ -164,7 +168,20 @@ function CuadreForm({ totals, sugerido, onSave }: {
   );
 }
 
-function CuadreGuardado({ c, onPrint }: { c: CuadreCaja; onPrint: () => void }) {
+function CuadreGuardado({ c }: { c: CuadreCaja }) {
+  const config = useConfiguracion();
+  const origin = useAuthStore((st) => st.session?.apiOrigin ?? '');
+  const [busy, setBusy] = useState<'pdf' | 'imprimir' | null>(null);
+  const documento = () => construirCuadreHtml({ cuadre: c, negocio: config.data!, logoUrl: resolverLogo(config.data?.logoUrl, origin) });
+  const accion = async (tipo: 'pdf' | 'imprimir') => {
+    if (!config.data) { toast('Cargando datos del negocio…', 'info'); return; }
+    setBusy(tipo);
+    try {
+      if (tipo === 'pdf') await compartirHtmlComoPdf(documento(), `cuadre-caja-${c.fecha.slice(0, 10)}.pdf`, `Cuadre de caja ${c.fecha.slice(0, 10)}`);
+      else await imprimirHtml(documento());
+    } catch (error) { toast(error instanceof Error && error.message ? error.message : 'No se pudo generar el documento.', 'error'); }
+    finally { setBusy(null); }
+  };
   const cuadra = Math.abs(c.diferencia) < 0.005;
   return (
     <>
@@ -193,7 +210,10 @@ function CuadreGuardado({ c, onPrint }: { c: CuadreCaja; onPrint: () => void }) 
         <Line label="Tarjeta" value={money(c.ingresosTarjeta)} />
       </Card>
       {!!c.nota && <InlineAlert tone="info" title="Nota" text={c.nota} />}
-      <Button label="Imprimir en la web" icon="print-outline" variant="secondary" size="md" onPress={onPrint} />
+      <View style={{ flexDirection: 'row', gap: space.md }}>
+        <Button label="Compartir PDF" icon="share-social-outline" variant="secondary" size="md" style={{ flex: 1 }} busy={busy === 'pdf'} disabled={busy !== null} onPress={() => void accion('pdf')} />
+        <Button label="Imprimir" icon="print-outline" size="md" style={{ flex: 1 }} busy={busy === 'imprimir'} disabled={busy !== null} onPress={() => void accion('imprimir')} />
+      </View>
     </>
   );
 }

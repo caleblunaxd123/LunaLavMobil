@@ -1,4 +1,6 @@
+import axios from 'axios';
 import { Platform } from 'react-native';
+import { useAuthStore } from '../store/authStore';
 import { api } from './http';
 import type { MetodoPago, Servicio } from './operationsApi';
 
@@ -22,10 +24,27 @@ export interface ConfiguracionNegocio {
   yapeTitular?: string | null;
   /** Servicio de sistema que representa la tarifa de domicilio (no es un servicio de lavandería). */
   servicioDeliveryId?: number | null;
+  // Datos que usa el ticket impreso (los mismos que la web).
+  ruc?: string | null;
+  logoUrl?: string | null;
+  /** 58 u 80 mm según la ticketera del negocio. */
+  anchoTicketMm?: number;
+  mensajePieTicket?: string | null;
+  condicionesServicio?: string | null;
+  notasProduccion?: string | null;
 }
 
-/** GET /api/configuracion: anónimo en el backend, así que cualquier rol puede leerla. */
+/**
+ * GET /api/configuracion: anónimo en el backend, así que cualquier rol puede leerla. El visitante de la
+ * demo tiene bloqueado todo /api/configuracion con su sesión, así que ahí se usa la versión pública
+ * del espacio "demo" (misma información, sin autenticación).
+ */
 export async function getConfiguracion() {
+  const session = useAuthStore.getState().session;
+  if (session?.isDemo) {
+    const { data } = await axios.get<ConfiguracionNegocio>(`${session.apiOrigin}/api/configuracion/publico/demo`, { timeout: 15_000 });
+    return data;
+  }
   const { data } = await api.get<ConfiguracionNegocio>('/api/configuracion');
   return data;
 }
