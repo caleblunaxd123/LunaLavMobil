@@ -6,7 +6,7 @@ import { getPedido } from '../api/operationsApi';
 import { AppText, BottomBar, Button, Choice, ErrorState, ListSkeleton, Screen, SegmentedControl, StackHeader, toast } from '../components/ui';
 import { compartirHtmlComoPdf, imprimirHtml } from '../documents/pdf';
 import {
-  anchoPaginaPt, anchoTicketMm, construirTicketHtml, resolverLogo, type TipoTicket,
+  anchoPaginaPt, anchoPaginaPx, anchoTicketMm, construirTicketHtml, resolverLogo, type TipoTicket,
 } from '../documents/ticketHtml';
 import { useConfiguracion } from '../hooks/useConfiguracion';
 import type { AppScreenProps } from '../navigation/types';
@@ -76,7 +76,7 @@ export function TicketScreen({ navigation, route }: AppScreenProps<'Ticket'>) {
               <AppText variant="caption">Ancho de ticketera configurado: {mm} mm. Para impresoras térmicas Bluetooth, elígela en el diálogo de impresión.</AppText>
             </View>
             <View style={styles.preview}>
-              <WebView key={`${tipo}-${descripcion}-${mm}`} originWhitelist={['*']} source={{ html }} style={styles.web}
+              <WebView key={`${tipo}-${descripcion}-${mm}`} originWhitelist={['*']} source={{ html }} style={[styles.web, { width: anchoPaginaPx(mm) + 8 }]}
                 scalesPageToFit={false} javaScriptEnabled onMessage={onMessage}
                 injectedJavaScript="window.ReactNativeWebView.postMessage(String(document.documentElement.scrollHeight)); true;" />
             </View>
@@ -96,7 +96,8 @@ const styles = StyleSheet.create({
   options: { paddingHorizontal: space.lg, paddingTop: space.sm, gap: space.sm },
   choices: { flexDirection: 'row' },
   preview: { flex: 1, margin: space.lg, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: colors.border },
-  web: { flex: 1, backgroundColor: '#FFFFFF' },
+  // El ticket se muestra a su tamaño real (80 o 58 mm) y centrado, como saldrá impreso.
+  web: { flex: 1, alignSelf: 'center', backgroundColor: '#FFFFFF' },
   bar: { flexDirection: 'row', gap: space.md },
   flex: { flex: 1 },
 });

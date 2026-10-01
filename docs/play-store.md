@@ -63,7 +63,7 @@ Prueba gratis 14 días, sin tarjeta. También puedes explorar la demo con datos 
 **Gráficos** (en `docs/play-store/`):
 - Ícono 512×512: `icon-512.png`
 - Gráfico de funciones 1024×500: `feature-graphic.png`
-- Capturas de teléfono (mín. 2, recomendado 4–8): `screenshots/`
+- Capturas de teléfono (mín. 2, recomendado 4–8): `screenshots/` (8 capturas de 1080×1920, relación 9:16, tomadas con la demo: inicio, pedidos, detalle, ticket, clientes, caja, reportes y nuevo pedido)
 
 ## 3. Contenido de la app (Play Console → Política)
 
@@ -90,13 +90,16 @@ Prueba gratis 14 días, sin tarjeta. También puedes explorar la demo con datos 
 | Información personal → Teléfono | Sí | Sí (al registrarse) | Gestión de la cuenta, Comunicaciones del desarrollador |
 | Información financiera → Historial de compras | Sí | Sí | Funcionalidad de la app (pedidos y cobros del negocio) |
 | Info. y rendimiento de la app | No | — | — |
-| Ubicación, fotos, contactos, audio, archivos | No | — | — |
+| Ubicación → Ubicación precisa | Sí (opcional: solo al pulsar «Mi ubicación» para marcar el punto de recojo/entrega) | No | Funcionalidad de la app. Se guarda en el pedido; **no se comparte** ni se usa en segundo plano |
+| Fotos y videos → Fotos | Sí (opcional: fotos de las prendas como evidencia del pedido) | No | Funcionalidad de la app. Se guardan en el pedido; **no se comparten** |
+| Contactos, audio, archivos y documentos | No | — | — |
 
 > Los datos de los clientes de cada lavandería los ingresa el propio negocio (LunaLav actúa como encargado del tratamiento); declararlos igual como "Nombre / Teléfono" recopilados para funcionalidad de la app.
 
 ## 4. Antes de enviar a revisión
 
 - [ ] Correr `restablecer-demo-lunalav.ps1` para que la demo tenga datos de ejemplo limpios (los revisores la usan).
+- [x] Verificado de punta a punta en emulador Android 16 contra producción (demo, pedido, cobro, ticket, reportes/Excel, cuadre, comprobantes). Falta repetir en un celular real.
 - [ ] Probar el `.apk` de `preview` en un celular real: demo, login, nuevo pedido, cobro, cerrar sesión.
 - [ ] Revisar y aprobar los textos de https://app.lunalav.pe/privacidad y /eliminar-cuenta (plazos de 30 y 90 días).
 - [ ] Cuentas personales nuevas de Play Console: exigen una **prueba cerrada con 12 testers durante 14 días** antes de poder publicar en producción. Las cuentas de organización (con D-U-N-S) no tienen ese requisito.
