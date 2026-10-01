@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { apiErrorMessage } from '../../api/errors';
 import { api } from '../../api/http';
 import { eliminarFoto, fotoPath, getFotos, MAX_FOTOS, subirFoto, type FotoPedido, type MomentoFoto } from '../../api/pedidoApi';
 import { colors, radius, space } from '../../theme';
 import { dateTime } from '../../utils/format';
-import { AppText, Badge, Button, Choice, toast } from '../ui';
+import { alerta, AppText, Badge, Button, Choice, toast } from '../ui';
 import { pickPhoto } from './FotosPicker';
 
 const MOMENTOS: { value: MomentoFoto; label: string }[] = [
@@ -93,9 +93,9 @@ export function FotosPedido({ pedidoId, editable }: { pedidoId: number; editable
           <View style={styles.viewerBar}>
             {ampliada && <Badge label={`${MOMENTOS.find((m) => m.value === ampliada.foto.momento)?.label} · ${dateTime(ampliada.foto.fechaSubida)}`} tone="neutral" dot={false} />}
             <View style={styles.flex} />
-            {editable && ampliada && <Pressable accessibilityLabel="Eliminar foto" hitSlop={10} onPress={() => Alert.alert('Eliminar foto', '¿Seguro? No se puede deshacer.', [
+            {editable && ampliada && <Pressable accessibilityLabel="Eliminar foto" hitSlop={10} onPress={() => alerta('Eliminar foto', '¿Seguro? No se puede deshacer.', [
               { text: 'Cancelar', style: 'cancel' }, { text: 'Eliminar', style: 'destructive', onPress: () => borrar.mutate(ampliada.foto.id) },
-            ])}><Ionicons name="trash-outline" size={24} color="#FFFFFF" /></Pressable>}
+            ], { icon: 'image' })}><Ionicons name="trash-outline" size={24} color="#FFFFFF" /></Pressable>}
             <Pressable onPress={() => setAmpliada(null)} accessibilityLabel="Cerrar" hitSlop={10}><Ionicons name="close" size={28} color="#FFFFFF" /></Pressable>
           </View>
         </View>

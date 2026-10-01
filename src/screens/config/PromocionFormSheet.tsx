@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { apiErrorMessage } from '../../api/errors';
 import {
   actualizarPromocion, crearPromocion, eliminarPromocion, getServiciosAdmin, type Promocion, type PromocionPayload,
 } from '../../api/gestionApi';
 import { parseFechaPeru } from '../../api/reportesApi';
-import { AppText, Button, Choice, InlineAlert, Sheet, TextField, toast } from '../../components/ui';
+import { alerta, AppText, Button, Choice, InlineAlert, Sheet, TextField, toast } from '../../components/ui';
 import { useAuthStore } from '../../store/authStore';
 import { colors, space } from '../../theme';
 import { fechaPeru, parseAmount } from '../../utils/format';
@@ -78,10 +78,10 @@ export function PromocionFormSheet({ promocion, onClose }: { promocion: Promocio
     onSuccess: async () => { await refresh(); toast('Promoción eliminada'); onClose(); },
     onError: (e) => toast(apiErrorMessage(e), 'error'),
   });
-  const confirmDelete = () => Alert.alert('Eliminar promoción', '¿Eliminar esta promoción? Los pedidos ya registrados no cambian. Si solo quieres detenerla, pausa con el interruptor.', [
+  const confirmDelete = () => alerta('Eliminar promoción', '¿Eliminar esta promoción? Los pedidos ya registrados no cambian. Si solo quieres detenerla, pausa con el interruptor.', [
     { text: 'Cancelar', style: 'cancel' },
     { text: 'Eliminar', style: 'destructive', onPress: () => borrar.mutate() },
-  ]);
+  ], { icon: 'pricetag' });
 
   const tipoActual = TIPOS.find((t) => t.value === tipo);
   return (

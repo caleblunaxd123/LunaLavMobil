@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
   checkSlug, registerTrial, RegistrationUnavailableError, requestSignupCode, requestTrial,
   type SlugCheck, type TrialLeadPayload, type TrialRegistrationResponse,
 } from '../api/authApi';
 import {
   AppText, BottomBar, Button, Card, Checkbox, InlineAlert, Screen, StackHeader, Steps, TextField,
+  alerta,
 } from '../components/ui';
 import { LogoMark } from '../components/brand';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
@@ -129,10 +130,10 @@ export function RegistroScreen({ navigation }: Props) {
   const dirty = !result && (step > 0 || !!negocio.trim() || !!celular.trim());
   usePreventRemove(dirty, ({ data }) => {
     if (step > 0) { goTo(step - 1); return; }
-    Alert.alert('¿Salir del registro?', 'Se perderán los datos que ingresaste.', [
+    alerta('¿Salir del registro?', 'Se perderán los datos que ingresaste.', [
       { text: 'Seguir', style: 'cancel' },
       { text: 'Salir', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
-    ]);
+    ], { tone: 'warning', icon: 'exit' });
   });
   const back = () => navigation.goBack();
 

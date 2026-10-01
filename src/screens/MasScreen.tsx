@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { Fragment } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Logo } from '../components/brand';
-import { AppText, Avatar, Badge, Card, Divider, ListItem, Screen, Section, TabHeader } from '../components/ui';
+import { alerta, AppText, Avatar, Badge, Card, Divider, ListItem, Screen, Section, TabHeader } from '../components/ui';
 import { usePermissions, type Modulo } from '../hooks/usePermissions';
 import type { TabScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -38,17 +38,17 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
   const { usuario } = session;
   const tools = gestion.filter((t) => can(t.module) && (!t.adminOnly || usuario.rol === 'ADMIN'));
 
-  const confirmLogout = () => Alert.alert('Cerrar sesión', '¿Quieres salir de LunaLav en este dispositivo?', [
+  const confirmLogout = () => alerta('Cerrar sesión', '¿Quieres salir de LunaLav en este dispositivo?', [
     { text: 'Cancelar', style: 'cancel' },
-    { text: 'Cerrar sesión', style: 'destructive', onPress: () => void logout() },
-  ]);
+    { text: 'Cerrar sesión', onPress: () => void logout() },
+  ], { icon: 'log-out' });
 
   // Google Play exige poder pedir la eliminación de la cuenta desde la app. La solicitud se
   // confirma con el titular antes de borrar datos, por eso se envía por correo con los datos
   // de la cuenta ya completados.
   const requestDeletion = () => {
     const isAdmin = usuario.rol === 'ADMIN';
-    Alert.alert('Eliminar mi cuenta',
+    alerta('Eliminar mi cuenta',
       isAdmin
         ? 'Se eliminarán tu lavandería y todos sus datos: sedes, usuarios, clientes, pedidos y caja. Te pediremos confirmación por correo o WhatsApp antes de hacerlo.'
         : 'Se eliminará tu usuario. Los pedidos que registraste seguirán siendo de la lavandería. Te pediremos confirmación antes de hacerlo.',
@@ -66,7 +66,7 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
           void Linking.openURL(`mailto:contacto@lunalav.pe?subject=${encodeURIComponent('Eliminar mi cuenta de LunaLav')}&body=${encodeURIComponent(body)}`)
             .catch(() => void Linking.openURL(DELETE_ACCOUNT_URL));
         } },
-      ]);
+      ], { icon: 'person-remove' });
   };
 
   return (

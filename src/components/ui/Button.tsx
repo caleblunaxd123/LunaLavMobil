@@ -32,7 +32,7 @@ export function Button({ label, onPress, variant = 'primary', size = 'lg', icon,
       ]}>
       {busy ? <ActivityIndicator color={p.fg} /> : <View style={styles.row}>
         {icon && <Ionicons name={icon} size={size === 'sm' ? 16 : 20} color={p.fg} />}
-        <AppText style={[styles.label, { color: p.fg, fontSize: size === 'sm' ? 13 : 15 }]} numberOfLines={1}>{label}</AppText>
+        <AppText style={[styles.label, { color: p.fg, fontSize: size === 'sm' ? 13 : 15 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{label}</AppText>
         {iconRight && <Ionicons name={iconRight} size={size === 'sm' ? 16 : 20} color={p.fg} />}
       </View>}
     </Pressable>

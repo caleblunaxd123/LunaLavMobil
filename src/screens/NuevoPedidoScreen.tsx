@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePreventRemove } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { apiErrorMessage } from '../api/errors';
 import {
   crearPedido, esDomicilio, getCliente, getClientes, getServicios, METODOS_PAGO,
@@ -17,6 +17,7 @@ import { NuevoServicioSheet } from '../components/pedido/NuevoServicioSheet';
 import {
   AppText, Avatar, Badge, BottomBar, Button, Card, Choice, DateTimeField, defaultPickupDate, Divider, EmptyState, InlineAlert,
   ListItem, Screen, SearchBar, Section, StackHeader, Steps, TextField, toast,
+  alerta,
 } from '../components/ui';
 import { normalizeText } from '../constants/distritos';
 import { useConfiguracion } from '../hooks/useConfiguracion';
@@ -268,10 +269,10 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
   usePreventRemove(dirty, ({ data }) => {
     if (saved.current) { navigation.dispatch(data.action); return; }
     if (step > 0) { goTo(step - 1); return; }
-    Alert.alert('¿Descartar el pedido?', 'Se perderán los datos que ingresaste.', [
+    alerta('¿Descartar el pedido?', 'Se perderán los datos que ingresaste.', [
       { text: 'Seguir editando', style: 'cancel' },
       { text: 'Descartar', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
-    ]);
+    ], { tone: 'warning', icon: 'document-text' });
   });
   const back = () => navigation.goBack();
 

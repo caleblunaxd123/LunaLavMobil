@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { apiErrorMessage } from '../api/errors';
 import {
   getCuadreDelUsuario, getMovimientosUsuario, getUltimoCuadreAnterior, getUsuariosDelDia, guardarCuadre, type CuadreCaja,
@@ -9,6 +9,7 @@ import {
 import {
   AppText, Badge, Button, Card, Choice, Divider, ErrorState, IconButton, InlineAlert, ListSkeleton, LockedState,
   Screen, Section, StackHeader, TextField, toast,
+  alerta,
 } from '../components/ui';
 import { construirCuadreHtml } from '../documents/cuadreHtml';
 import { compartirHtmlComoPdf, imprimirHtml } from '../documents/pdf';
@@ -121,10 +122,10 @@ function CuadreForm({ totals, sugerido, onSave }: {
   const save = useMutation({ mutationFn: () => onSave({ cajaInicial, totalContado, corte: corteN, nota: nota.trim() || undefined }) });
   const confirm = () => {
     const detalle = cuadra ? 'La caja cuadra exacto.' : `Hay ${diferencia > 0 ? 'un sobrante' : 'un faltante'} de ${money(Math.abs(diferencia))}.`;
-    Alert.alert('Guardar cuadre', `${detalle}\nDespués de guardarlo ya no se puede editar.`, [
+    alerta('Guardar cuadre', `${detalle}\nDespués de guardarlo ya no se puede editar.`, [
       { text: 'Revisar', style: 'cancel' },
       { text: 'Guardar', onPress: () => save.mutate() },
-    ]);
+    ], cuadra ? { tone: 'success', icon: 'calculator' } : { tone: 'warning', icon: 'calculator' });
   };
 
   return (

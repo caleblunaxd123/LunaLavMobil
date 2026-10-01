@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { Fragment, useState } from 'react';
-import { Alert, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { apiErrorMessage } from '../api/errors';
 import {
   avanzarPedido, esDomicilio, getPagosPedido, getPedido, METODOS_PAGO, registrarPago, type MetodoPago, type PagoPedido, type Pedido,
@@ -18,6 +18,7 @@ import { HistorialPedido } from '../components/pedido/HistorialPedido';
 import {
   AppText, Avatar, Badge, BottomBar, Button, Card, Choice, Divider, ErrorState, IconButton, InlineAlert, ListItem,
   ListSkeleton, Screen, Section, Sheet, StackHeader, TextField, toast,
+  alerta,
 } from '../components/ui';
 import { formatDateTime } from '../components/ui/DateTimeField';
 import { useConfiguracion } from '../hooks/useConfiguracion';
@@ -75,10 +76,10 @@ export function PedidoDetalleScreen({ navigation, route }: AppScreenProps<'Pedid
       toast('Etapa actualizada');
       // Igual que la web: al quedar listo se ofrece avisar al cliente por WhatsApp.
       if (actualizado.estadoProceso === 'LISTO' && actualizado.clienteCelular) {
-        Alert.alert('Pedido listo', `¿Avisar a ${actualizado.clienteNombre ?? 'el cliente'} por WhatsApp?`, [
+        alerta('Pedido listo', `¿Avisar a ${actualizado.clienteNombre ?? 'el cliente'} por WhatsApp?`, [
           { text: 'Ahora no', style: 'cancel' },
           { text: 'Avisar', onPress: () => void enviar(actualizado, 'listo') },
-        ]);
+        ], { tone: 'success', icon: 'logo-whatsapp' });
       }
     },
     onError: (e) => setError(apiErrorMessage(e)),
@@ -139,12 +140,12 @@ export function PedidoDetalleScreen({ navigation, route }: AppScreenProps<'Pedid
 
   const confirmAdvance = () => {
     if (ready) { setModal('entrega'); return; }
-    Alert.alert(action.label, action.label === 'Marcar listo'
+    alerta(action.label, action.label === 'Marcar listo'
       ? `El pedido #${p.numero} quedará listo para entregar.`
       : `El pedido #${p.numero} pasará a la siguiente etapa.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Confirmar', onPress: () => avanzar.mutate() },
-    ]);
+    ], action.label === 'Marcar listo' ? { tone: 'success', icon: 'checkmark-done-circle' } : { icon: 'arrow-forward-circle' });
   };
   const comoLlegar = () => void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${p.latitudEntrega},${p.longitudEntrega}`);
 
@@ -303,10 +304,15 @@ export function PedidoDetalleScreen({ navigation, route }: AppScreenProps<'Pedid
       </ScrollView>
 
       {!isFinal && <BottomBar>
-        <View style={styles.actions}>
-          {saldo > 0 && !ready && <Button label={`Cobrar ${money(saldo)}`} icon="cash-outline" variant="secondary" onPress={() => setModal('pago')} style={styles.flex} />}
-          <Button label={action.label} icon={action.icon} onPress={confirmAdvance} busy={avanzar.isPending} style={styles.flex} />
-        </View>
+        {/* Con un nombre de etapa largo ("Pasar a Control de calidad") los dos botones no caben lado a lado: se apilan. */}
+        {(() => {
+          const cobrar = saldo > 0 && !ready;
+          const apilar = cobrar && action.label.length > 16;
+          return <View style={apilar ? styles.actionsStacked : styles.actions}>
+            <Button label={action.label} icon={action.icon} onPress={confirmAdvance} busy={avanzar.isPending} style={apilar ? undefined : styles.flex} />
+            {cobrar && <Button label={`Cobrar ${money(saldo)}`} icon="cash-outline" variant="secondary" onPress={() => setModal('pago')} style={apilar ? undefined : styles.flex} />}
+          </View>;
+        })()}
       </BottomBar>}
 
       {modal === 'pago' && <PagoSheet pedidoId={id} saldo={saldo} onClose={() => setModal(null)} onPaid={refreshAll} />}
@@ -448,7 +454,9 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   payIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.successSoft, alignItems: 'center', justifyContent: 'center' },
   hint: { marginTop: space.sm },
-  actions: { flexDirection: 'row', gap: space.md },
+  // row-reverse: el botón principal queda a la derecha, como antes; el cobro a su izquierda.
+  actions: { flexDirection: 'row-reverse', gap: space.md },
+  actionsStacked: { gap: space.sm },
   label: { marginBottom: space.sm },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   actionsList: { maxHeight: 460 },

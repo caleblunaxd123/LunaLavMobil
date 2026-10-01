@@ -23,6 +23,12 @@ export type AppStackParamList = {
   Comprobantes: undefined;
   Promociones: undefined;
   Configuracion: undefined;
+  CatalogoSimple: { tipo: 'categorias' | 'tipos-gasto' | 'roles-personal' };
+  Areas: undefined;
+  Personal: undefined;
+  Sedes: undefined;
+  PlantillasWhatsapp: undefined;
+  Permisos: undefined;
 };
 
 export type AppScreenProps<T extends keyof AppStackParamList> = NativeStackScreenProps<AppStackParamList, T>;

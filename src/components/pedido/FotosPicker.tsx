@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MAX_FOTOS } from '../../api/pedidoApi';
 import { colors, radius, space } from '../../theme';
-import { AppText } from '../ui';
+import { alerta, AppText } from '../ui';
 
 const PICK_OPTIONS: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.6, allowsEditing: false };
 
@@ -13,9 +13,10 @@ export async function pickPhoto(source: 'camera' | 'library'): Promise<string | 
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
-    Alert.alert('Permiso necesario', source === 'camera'
+    alerta('Permiso necesario', source === 'camera'
       ? 'Activa el acceso a la cámara en los ajustes del teléfono para fotografiar las prendas.'
-      : 'Activa el acceso a tus fotos en los ajustes del teléfono.');
+      : 'Activa el acceso a tus fotos en los ajustes del teléfono.', undefined,
+    { tone: 'warning', icon: source === 'camera' ? 'camera' : 'images' });
     return null;
   }
   const result = source === 'camera'
@@ -27,7 +28,7 @@ export async function pickPhoto(source: 'camera' | 'library'): Promise<string | 
 /** Fotos de evidencia antes de guardar: se suben al registrar el pedido. */
 export function FotosPicker({ uris, onChange }: { uris: string[]; onChange: (uris: string[]) => void }) {
   const add = async (source: 'camera' | 'library') => {
-    if (uris.length >= MAX_FOTOS) { Alert.alert('Límite de fotos', `Puedes adjuntar hasta ${MAX_FOTOS} fotos por pedido.`); return; }
+    if (uris.length >= MAX_FOTOS) { alerta('Límite de fotos', `Puedes adjuntar hasta ${MAX_FOTOS} fotos por pedido.`, undefined, { tone: 'warning', icon: 'images' }); return; }
     const uri = await pickPhoto(source);
     if (uri) onChange([...uris, uri]);
   };

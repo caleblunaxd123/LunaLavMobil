@@ -13,7 +13,7 @@ import { initMonitoring } from './src/app-shell/monitoring';
 import { setupNetworkSync } from './src/app-shell/network';
 import { StatusBanners } from './src/app-shell/StatusBanners';
 import { LogoMark } from './src/components/brand';
-import { ToastHost } from './src/components/ui';
+import { DialogHost, ToastHost } from './src/components/ui';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/store/authStore';
 import { colors } from './src/theme';
@@ -51,6 +51,7 @@ export default function App() {
         </Sentry.ErrorBoundary>
         <StatusBanners />
         <ToastHost />
+        <DialogHost />
       </QueryClientProvider>
     </SafeAreaProvider>
   );

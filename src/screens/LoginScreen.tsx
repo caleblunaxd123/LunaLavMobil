@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
 import { Logo } from '../components/brand';
-import { AppText, Button, IconButton, InlineAlert, Screen, TextField } from '../components/ui';
+import { alerta, AppText, Button, IconButton, InlineAlert, Screen, TextField } from '../components/ui';
 import type { AuthStackParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, space } from '../theme';
@@ -38,8 +38,8 @@ export function LoginScreen({ navigation, route }: Props) {
     if (valid) await login({ empresaSlug: normalizeEmpresa(empresaSlug), usuario: usuario.trim(), password });
   };
 
-  const forgot = () => Alert.alert('¿Olvidaste tu contraseña?',
-    'Pide al administrador de tu lavandería que la restablezca desde Ajustes → Usuarios. Si eres el administrador, escríbenos a contacto@lunalav.pe.');
+  const forgot = () => alerta('¿Olvidaste tu contraseña?',
+    'Pide al administrador de tu lavandería que la restablezca desde Ajustes → Usuarios. Si eres el administrador, escríbenos a contacto@lunalav.pe.', undefined, { icon: 'key' });
 
   return (
     <Screen edges={['top', 'bottom']}>

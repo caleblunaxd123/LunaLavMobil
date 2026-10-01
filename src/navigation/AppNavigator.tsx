@@ -9,6 +9,12 @@ import { ClienteFormScreen } from '../screens/ClienteFormScreen';
 import { ClientesScreen } from '../screens/ClientesScreen';
 import { ComprobantesScreen } from '../screens/ComprobantesScreen';
 import { ConfiguracionScreen } from '../screens/ConfiguracionScreen';
+import { AreasScreen } from '../screens/ajustes/AreasScreen';
+import { CatalogoSimpleScreen } from '../screens/ajustes/CatalogoSimpleScreen';
+import { PermisosScreen } from '../screens/ajustes/PermisosScreen';
+import { PersonalScreen } from '../screens/ajustes/PersonalScreen';
+import { PlantillasWhatsappScreen } from '../screens/ajustes/PlantillasWhatsappScreen';
+import { SedesScreen } from '../screens/ajustes/SedesScreen';
 import { CuadreCajaScreen } from '../screens/CuadreCajaScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { GastoFormScreen } from '../screens/GastoFormScreen';
@@ -79,6 +85,12 @@ function MainNavigator({ needsSede }: { needsSede: boolean }) {
         <AppStack.Screen name="Comprobantes" component={ComprobantesScreen} />
         <AppStack.Screen name="Promociones" component={PromocionesScreen} />
         <AppStack.Screen name="Configuracion" component={ConfiguracionScreen} />
+        <AppStack.Screen name="CatalogoSimple" component={CatalogoSimpleScreen} />
+        <AppStack.Screen name="Areas" component={AreasScreen} />
+        <AppStack.Screen name="Personal" component={PersonalScreen} />
+        <AppStack.Screen name="Sedes" component={SedesScreen} />
+        <AppStack.Screen name="PlantillasWhatsapp" component={PlantillasWhatsappScreen} />
+        <AppStack.Screen name="Permisos" component={PermisosScreen} />
         <AppStack.Group screenOptions={{ presentation: 'modal', animation: 'slide_from_bottom' }}>
           <AppStack.Screen name="NuevoPedido" component={NuevoPedidoScreen} />
           <AppStack.Screen name="ClienteForm" component={ClienteFormScreen} />

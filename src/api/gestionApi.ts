@@ -259,7 +259,9 @@ export interface UsuarioAdmin {
   nombreCompleto: string;
   email?: string | null;
   rolId: number;
+  rolCodigo?: string | null;
   rolNombre?: string | null;
+  sedeId?: number | null;
   sedeNombre?: string | null;
   activo: boolean;
 }

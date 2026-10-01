@@ -2,6 +2,7 @@ export * from './Badge';
 export * from './Button';
 export * from './Card';
 export * from './Controls';
+export * from './Dialog';
 export * from './DateTimeField';
 export * from './Layout';
 export * from './Pager';

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fragment, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, Switch, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Switch, View } from 'react-native';
 import { apiErrorMessage } from '../api/errors';
 import {
   cambiarEstadoUsuario, getServiciosAdmin, getUsuariosAdmin, type ServicioEditable, type UsuarioAdmin,
@@ -9,6 +9,7 @@ import {
 import {
   AppText, Avatar, Badge, Button, Card, Divider, EmptyState, ErrorState, IconButton, ListItem, ListSkeleton, LockedState,
   Pager, Screen, SearchBar, SegmentedControl, StackHeader, toast,
+  alerta,
 } from '../components/ui';
 import { usePagination } from '../hooks/usePagination';
 import { usePermissions } from '../hooks/usePermissions';
@@ -19,6 +20,7 @@ import { money } from '../utils/format';
 import { useOpenWeb } from '../utils/web';
 import { MotorizadosTab } from './config/MotorizadosTab';
 import { NegocioTab } from './config/NegocioTab';
+import { UsuarioFormSheet } from './ajustes/UsuarioFormSheet';
 import { ServicioFormSheet } from './config/ServicioFormSheet';
 
 type Tab = 'servicios' | 'motorizados' | 'negocio' | 'usuarios' | 'mas';
@@ -26,14 +28,25 @@ type IconName = keyof typeof Ionicons.glyphMap;
 
 const normalize = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-// Ajustes que se configuran una sola vez o necesitan pantalla grande: quedan en la web.
+type RutaAjuste = 'Areas' | 'Personal' | 'Sedes' | 'PlantillasWhatsapp' | 'Permisos' | 'CatalogoSimple';
+interface AjusteNativo { label: string; hint: string; icon: IconName; ruta: RutaAjuste; params?: { tipo: 'categorias' | 'tipos-gasto' | 'roles-personal' } }
+
+// Ajustes que se editan desde la propia app.
+const ajustesNativos: AjusteNativo[] = [
+  { label: 'Roles y permisos', hint: 'Qué ve y qué puede hacer cada rol', icon: 'key-outline', ruta: 'Permisos' },
+  { label: 'Categorías de servicio', hint: 'Agrupan tu lista de precios', icon: 'albums-outline', ruta: 'CatalogoSimple', params: { tipo: 'categorias' } },
+  { label: 'Tipos de gasto', hint: 'Para ordenar los gastos de caja', icon: 'wallet-outline', ruta: 'CatalogoSimple', params: { tipo: 'tipos-gasto' } },
+  { label: 'Áreas de lavado', hint: 'Etapas por las que pasa un pedido', icon: 'git-branch-outline', ruta: 'Areas' },
+  { label: 'Mensajes de WhatsApp', hint: 'Lo que reciben tus clientes', icon: 'logo-whatsapp', ruta: 'PlantillasWhatsapp' },
+  { label: 'Personal', hint: 'Tu equipo de trabajo', icon: 'people-outline', ruta: 'Personal' },
+  { label: 'Cargos del personal', hint: 'Cajero, planchador, repartidor…', icon: 'briefcase-outline', ruta: 'CatalogoSimple', params: { tipo: 'roles-personal' } },
+  { label: 'Sedes', hint: 'Tus locales', icon: 'storefront-outline', ruta: 'Sedes' },
+];
+
+// Conexión con SUNAT y pagos de la suscripción: quedan en la web (certificados, claves y 3D Secure).
 const webSettings: { label: string; hint: string; icon: IconName; path: string }[] = [
-  { label: 'Datos del negocio', hint: 'Nombre, RUC, logo y ticket', icon: 'business-outline', path: 'ajustes/negocio' },
-  { label: 'Permisos por rol', hint: 'Qué módulos ve cada usuario', icon: 'key-outline', path: 'ajustes/permisos' },
-  { label: 'Categorías de servicio', hint: 'Renombrar u ordenar categorías', icon: 'albums-outline', path: 'ajustes/categorias' },
-  { label: 'Tipos de gasto', hint: 'Para ordenar los gastos de caja', icon: 'wallet-outline', path: 'ajustes/tipos-gasto' },
-  { label: 'Áreas de lavado', hint: 'Etapas por las que pasa un pedido', icon: 'git-branch-outline', path: 'ajustes/areas' },
-  { label: 'Facturación electrónica', hint: 'Conexión con SUNAT', icon: 'document-text-outline', path: 'ajustes' },
+  { label: 'Facturación electrónica', hint: 'Conexión con SUNAT y certificado digital', icon: 'document-text-outline', path: 'ajustes/facturacion-electronica' },
+  { label: 'Suscripción y pagos', hint: 'Tu plan, cobro con tarjeta y pagos en línea', icon: 'card-outline', path: 'ajustes/suscripcion' },
 ];
 
 export function ConfiguracionScreen({ navigation }: AppScreenProps<'Configuracion'>) {
@@ -59,17 +72,25 @@ export function ConfiguracionScreen({ navigation }: AppScreenProps<'Configuracio
       {tab === 'servicios' ? <ServiciosTab />
         : tab === 'motorizados' ? <MotorizadosTab />
         : tab === 'negocio' ? <NegocioTab />
-        : tab === 'usuarios' ? <UsuariosTab onWeb={() => openWeb('ajustes/usuarios')} />
+        : tab === 'usuarios' ? <UsuariosTab />
           : <FlatList data={[0]} keyExtractor={String} contentContainerStyle={styles.content} renderItem={() => <>
             <Card padded={false}>
-              {webSettings.map((s, i) => <Fragment key={s.path + s.label}>
+              {ajustesNativos.map((x, i) => <Fragment key={x.label}>
                 {i > 0 && <Divider inset={68} />}
-                <ListItem title={s.label} subtitle={s.hint} onPress={() => openWeb(s.path)}
-                  leading={<View style={styles.icon}><Ionicons name={s.icon} size={19} color={colors.navySoft} /></View>}
+                <ListItem title={x.label} subtitle={x.hint} chevron
+                  onPress={() => (x.params ? navigation.navigate('CatalogoSimple', x.params) : navigation.navigate(x.ruta as 'Areas'))}
+                  leading={<View style={styles.icon}><Ionicons name={x.icon} size={19} color={colors.navySoft} /></View>} />
+              </Fragment>)}
+            </Card>
+            <AppText variant="caption" style={styles.note}>Se abren en el navegador con tu misma cuenta:</AppText>
+            <Card padded={false}>
+              {webSettings.map((x, i) => <Fragment key={x.path}>
+                {i > 0 && <Divider inset={68} />}
+                <ListItem title={x.label} subtitle={x.hint} onPress={() => openWeb(x.path)}
+                  leading={<View style={styles.icon}><Ionicons name={x.icon} size={19} color={colors.navySoft} /></View>}
                   trailing={<Ionicons name="open-outline" size={17} color={colors.placeholder} />} />
               </Fragment>)}
             </Card>
-            <AppText variant="caption" style={styles.note}>Estos ajustes se hacen una sola vez; se abren en el navegador con tu misma cuenta.</AppText>
           </>} />}
     </Screen>
   );
@@ -123,7 +144,8 @@ function ServiciosTab() {
   </>;
 }
 
-function UsuariosTab({ onWeb }: { onWeb: () => void }) {
+function UsuariosTab() {
+  const [form, setForm] = useState<UsuarioAdmin | null | undefined>(undefined);
   const me = useAuthStore((s) => s.session?.usuario);
   const queryClient = useQueryClient();
   const key = ['usuarios-admin', me?.negocioId];
@@ -136,27 +158,28 @@ function UsuariosTab({ onWeb }: { onWeb: () => void }) {
   });
   const confirm = (u: UsuarioAdmin) => {
     if (!u.activo) { toggle.mutate(u); return; }
-    Alert.alert('Desactivar usuario', `${u.nombreCompleto} no podrá iniciar sesión hasta que lo actives otra vez. Sus pedidos y cobros se conservan.`, [
+    alerta('Desactivar usuario', `${u.nombreCompleto} no podrá iniciar sesión hasta que lo actives otra vez. Sus pedidos y cobros se conservan.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Desactivar', style: 'destructive', onPress: () => toggle.mutate(u) },
-    ]);
+    ], { tone: 'warning', icon: 'person-remove' });
   };
   const users = [...(query.data ?? [])].sort((a, b) => Number(b.activo) - Number(a.activo) || a.nombreCompleto.localeCompare(b.nombreCompleto));
 
   return (
+    <>
     <FlatList
       data={users}
       keyExtractor={(item) => String(item.id)}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
       ListHeaderComponent={<View style={styles.header}>
-        <Button label="Crear usuario o cambiar su clave en la web" icon="person-add-outline" variant="secondary" size="md" onPress={onWeb} />
+        <Button label="Nuevo usuario" icon="person-add-outline" variant="secondary" size="md" onPress={() => setForm(null)} />
       </View>}
       ListEmptyComponent={query.isLoading ? <ListSkeleton /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} /> : null}
       renderItem={({ item: u }) => {
         const self = u.id === me?.id;
         return (
-          <Card style={[styles.row, !u.activo && styles.inactive]}>
+          <Card style={[styles.row, !u.activo && styles.inactive]} onPress={() => setForm(u)} accessibilityLabel={`Editar a ${u.nombreCompleto}`}>
             <Avatar name={u.nombreCompleto} size={40} tone={u.activo ? 'primary' : 'neutral'} />
             <View style={styles.flex}>
               <AppText variant="subheading" numberOfLines={1}>{u.nombreCompleto}{self ? ' (tú)' : ''}</AppText>
@@ -169,6 +192,8 @@ function UsuariosTab({ onWeb }: { onWeb: () => void }) {
         );
       }}
     />
+    {form !== undefined && <UsuarioFormSheet usuario={form} onClose={() => setForm(undefined)} />}
+    </>
   );
 }
 

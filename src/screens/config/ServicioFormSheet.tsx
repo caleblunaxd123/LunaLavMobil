@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { apiErrorMessage } from '../../api/errors';
 import {
   actualizarServicio, crearCategoria, crearServicioAdmin, eliminarServicio, getCategorias, type ServicioEditable,
 } from '../../api/gestionApi';
 import { UNIDADES } from '../../components/pedido/NuevoServicioSheet';
-import { AppText, Button, Choice, InlineAlert, Sheet, TextField, toast } from '../../components/ui';
+import { alerta, AppText, Button, Choice, InlineAlert, Sheet, TextField, toast } from '../../components/ui';
 import { useAuthStore } from '../../store/authStore';
 import { colors, space } from '../../theme';
 import { money, parseAmount } from '../../utils/format';
@@ -61,12 +61,12 @@ export function ServicioFormSheet({ servicio, onClose }: { servicio: ServicioEdi
     onError: (e) => toast(apiErrorMessage(e), 'error'),
   });
 
-  const confirmDelete = () => Alert.alert('Eliminar servicio', servicio?.enUso
+  const confirmDelete = () => alerta('Eliminar servicio', servicio?.enUso
     ? 'Este servicio ya se usó en pedidos: se ocultará para nuevos pedidos y se conserva el historial.'
     : '¿Eliminar este servicio de tu lista de precios?', [
     { text: 'Cancelar', style: 'cancel' },
     { text: servicio?.enUso ? 'Ocultar' : 'Eliminar', style: 'destructive', onPress: () => borrar.mutate() },
-  ]);
+  ], servicio?.enUso ? { tone: 'warning', icon: 'eye-off' } : { icon: 'trash' });
 
   const margen = precioNum > 0 && costoNum > 0 ? Math.round(((precioNum - costoNum) / precioNum) * 100) : null;
   return (
