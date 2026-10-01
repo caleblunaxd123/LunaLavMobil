@@ -180,6 +180,7 @@ export interface Promocion {
   descripcion: string;
   descuentoPct?: number | null;
   descuentoMonto?: number | null;
+  servicioId?: number | null;
   servicioNombre?: string | null;
   cantidadMinima: number;
   fechaInicio?: string | null;
@@ -199,6 +200,34 @@ export async function getPromociones() {
 
 export async function cambiarEstadoPromocion(id: number, activa: boolean) {
   await api.patch(`/api/promociones/${id}/estado`, { activa });
+}
+
+/** Lo que el servidor guarda de una promoción (las fechas viajan como yyyy-MM-dd). */
+export interface PromocionPayload {
+  tipo: 'VOLUMEN' | 'FRECUENCIA' | 'FIJA' | 'CODIGO';
+  descripcion: string;
+  descuentoPct: number | null;
+  descuentoMonto: number | null;
+  servicioId: number | null;
+  cantidadMinima: number;
+  fechaInicio: string | null;
+  fechaFin: string | null;
+  activa: boolean;
+  codigo: string | null;
+  maxUsos: number | null;
+}
+
+export async function crearPromocion(p: PromocionPayload) {
+  const { data } = await api.post<Promocion>('/api/promociones', p);
+  return data;
+}
+
+export async function actualizarPromocion(id: number, p: PromocionPayload) {
+  await api.put(`/api/promociones/${id}`, { id, ...p });
+}
+
+export async function eliminarPromocion(id: number) {
+  await api.delete(`/api/promociones/${id}`);
 }
 
 // ---------- Configuración: servicios y usuarios ----------

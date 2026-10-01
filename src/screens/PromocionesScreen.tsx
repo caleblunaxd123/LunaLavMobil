@@ -8,6 +8,7 @@ import {
   AppText, Badge, Button, Card, EmptyState, ErrorState, IconButton, ListSkeleton, LockedState, Pager, Screen, SegmentedControl, StackHeader, toast,
 } from '../components/ui';
 import { usePagination } from '../hooks/usePagination';
+import { PromocionFormSheet } from './config/PromocionFormSheet';
 import { usePermissions } from '../hooks/usePermissions';
 import type { AppScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
@@ -17,6 +18,7 @@ import { useOpenWeb } from '../utils/web';
 
 type Filtro = 'activas' | 'codigos' | 'inactivas';
 const tipoLabel: Record<string, string> = { VOLUMEN: 'Por volumen', FRECUENCIA: 'Cliente frecuente', FIJA: 'Descuento fijo', CODIGO: 'Código', RESTA: 'Canje de puntos' };
+const EDITABLES = ['VOLUMEN', 'FRECUENCIA', 'FIJA', 'CODIGO'];
 const esCodigo = (p: Promocion) => !!p.codigo;
 const vencida = (p: Promocion) => !!p.fechaFin && isPastDay(p.fechaFin);
 const agotada = (p: Promocion) => p.maxUsos != null && p.usos >= p.maxUsos;
@@ -35,6 +37,8 @@ export function PromocionesScreen({ navigation }: AppScreenProps<'Promociones'>)
   const queryClient = useQueryClient();
   const listRef = useRef<FlatList>(null);
   const [filtro, setFiltro] = useState<Filtro>('activas');
+  // undefined = cerrado, null = nueva, Promocion = editar
+  const [form, setForm] = useState<Promocion | null | undefined>(undefined);
   // La API de promociones es solo para administradores.
   const allowed = isAdmin && can('PROMOCIONES');
   const query = useQuery({ queryKey: ['promociones', negocioId], queryFn: getPromociones, enabled: allowed });
@@ -75,7 +79,7 @@ export function PromocionesScreen({ navigation }: AppScreenProps<'Promociones'>)
             { value: 'codigos', label: 'Códigos', count: groups.codigos.length },
             { value: 'inactivas', label: 'Pausadas', count: groups.inactivas.length },
           ]} />
-          <Button label="Crear promoción o código en la web" icon="add" variant="secondary" size="md" onPress={() => openWeb('promociones')} />
+          <Button label="Nueva promoción o código" icon="add" variant="secondary" size="md" onPress={() => setForm(null)} />
         </View>}
         ListEmptyComponent={query.isLoading ? <ListSkeleton /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} />
           : <EmptyState icon="pricetag-outline" title={filtro === 'inactivas' ? 'Nada pausado' : 'Sin promociones'}
@@ -85,7 +89,7 @@ export function PromocionesScreen({ navigation }: AppScreenProps<'Promociones'>)
         renderItem={({ item: p }) => {
           const off = vencida(p) || agotada(p);
           return (
-            <Card style={styles.row}>
+            <Card style={styles.row} onPress={EDITABLES.includes(p.tipo) ? () => setForm(p) : undefined} accessibilityLabel={`Editar ${p.descripcion}`}>
               <View style={[styles.icon, { backgroundColor: p.activa && !off ? colors.tealSoft : colors.surfaceMuted }]}>
                 <Ionicons name={esCodigo(p) ? 'ticket-outline' : 'pricetag-outline'} size={19} color={p.activa && !off ? colors.teal : colors.muted} />
               </View>
@@ -108,6 +112,7 @@ export function PromocionesScreen({ navigation }: AppScreenProps<'Promociones'>)
         ListFooterComponent={<Pager page={page} pageSize={pageSize} total={total}
           onChange={(p) => { setPage(p); listRef.current?.scrollToOffset({ offset: 0, animated: true }); }} />}
       />
+      {form !== undefined && <PromocionFormSheet promocion={form} onClose={() => setForm(undefined)} />}
     </Screen>
   );
 }

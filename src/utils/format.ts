@@ -141,3 +141,9 @@ export function whatsappUrl(celular: string) {
   const digits = celular.replace(/\D/g, '');
   return `https://wa.me/${/^9\d{8}$/.test(digits) ? `51${digits}` : digits}`;
 }
+
+/** "2026-12-25" (o con hora) → "25/12/2026", el formato con el que se escriben las fechas en Perú. */
+export function fechaPeru(value?: string | null) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
