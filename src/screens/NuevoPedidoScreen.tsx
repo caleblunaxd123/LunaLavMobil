@@ -21,6 +21,7 @@ import {
 import { normalizeText } from '../constants/distritos';
 import { useConfiguracion } from '../hooks/useConfiguracion';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { usePermissions } from '../hooks/usePermissions';
 import type { AppScreenProps } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { colors, fonts, radius, space } from '../theme';
@@ -102,6 +103,7 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
   const [areaId, setAreaId] = useState<number | null>(null);
 
   // Paso 4 — pago y extras
+  const puedeDescuento = usePermissions()('REGISTRAR_APLICAR_DESCUENTO');
   const [aplicaDescuento, setAplicaDescuento] = useState(false);
   const [descuentoPct, setDescuentoPct] = useState('10');
   const [codigoPromo, setCodigoPromo] = useState('');
@@ -476,11 +478,11 @@ export function NuevoPedidoScreen({ navigation, route }: AppScreenProps<'NuevoPe
             <AppText variant="caption">El total se redondea a los S/ 0.10, igual que en caja.</AppText>
           </Card>
 
-          <Toggle title="Aplicar descuento" text={maxDesc > 0 ? `Máximo permitido por tu negocio: ${maxDesc}%` : 'Porcentaje sobre el subtotal'}
+          {puedeDescuento && <Toggle title="Aplicar descuento" text={maxDesc > 0 ? `Máximo permitido por tu negocio: ${maxDesc}%` : 'Porcentaje sobre el subtotal'}
             value={aplicaDescuento} onChange={(v) => { setAplicaDescuento(v); if (!v) setPromo(null); }}>
             {aplicaDescuento && !promo && <TextField label="Descuento (%)" value={descuentoPct} onChangeText={setDescuentoPct} keyboardType="decimal-pad"
               error={maxDesc > 0 && (parseAmount(descuentoPct) || 0) > maxDesc ? `Se aplicará el máximo: ${maxDesc}%.` : ''} />}
-          </Toggle>
+          </Toggle>}
 
           <Card style={styles.gap}>
             <AppText variant="subheading">Código de promoción</AppText>

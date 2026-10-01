@@ -121,14 +121,14 @@ export function DashboardScreen({ navigation }: TabScreenProps<'Inicio'>) {
             : dashboard.isError || !d ? <ErrorState onRetry={() => void dashboard.refetch()} />
               : <>
                 <View style={styles.kpis}>
-                  <Kpi icon="cash-outline" tone={colors.success} label="Ventas de hoy" value={money(d.ventasDelDia)} hint={versus(d.ventasDelDia, d.ventasAyer)} />
+                  {can('INICIO_VER_MONTOS') && <Kpi icon="cash-outline" tone={colors.success} label="Ventas de hoy" value={money(d.ventasDelDia)} hint={versus(d.ventasDelDia, d.ventasAyer)} />}
                   <Kpi icon="receipt-outline" tone={colors.primary} label="Pedidos de hoy" value={String(d.ordenesHoy)} hint={versus(d.ordenesHoy, d.ordenesAyer)} />
                   <Kpi icon="sync-outline" tone={colors.warning} label="En curso" value={String(d.totalPendientes + (d.totalEnProceso ?? 0))}
                     hint="Ver pedidos en curso" onPress={can('PEDIDOS') ? () => navigation.navigate('Pedidos', { filtro: 'pendientes' }) : undefined} />
                   <Kpi icon="bag-check-outline" tone={colors.teal} label="Por entregar" value={String(d.totalListos)}
                     hint={`${plural(d.pedidosEntregadosHoy ?? 0, 'entregado', 'entregados')} hoy`} onPress={can('PEDIDOS') ? () => navigation.navigate('Pedidos', { filtro: 'listos' }) : undefined} />
                 </View>
-                {(d.saldoPorCobrar ?? 0) > 0 && <View style={styles.block}><InlineAlert tone="warning" title={`${money(d.saldoPorCobrar)} por cobrar`}
+                {(d.saldoPorCobrar ?? 0) > 0 && can('INICIO_VER_MONTOS') && <View style={styles.block}><InlineAlert tone="warning" title={`${money(d.saldoPorCobrar)} por cobrar`}
                   text="Saldo pendiente de pedidos activos. Cóbralo al entregar." /></View>}
                 {d.totalPedidosAbandonados > 0 && <View style={styles.block}><InlineAlert tone="info" icon="time-outline"
                   title={`${d.totalPedidosAbandonados} pedidos esperan recojo hace días`} text="Avisa a tus clientes por WhatsApp desde el detalle del pedido." /></View>}

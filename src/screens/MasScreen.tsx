@@ -92,7 +92,7 @@ export function MasScreen({ navigation }: TabScreenProps<'Más'>) {
             {can('INVENTARIO') && <><Divider inset={68} />
               <ListItem title="Inventario" subtitle="Stock de insumos y compras" leading={<Icon name="cube-outline" tint={colors.warning} />}
                 chevron onPress={() => navigation.navigate('Inventario')} /></>}
-            {can('CAJA') && <><Divider inset={68} />
+            {can('CAJA_REGISTRAR_GASTO') && <><Divider inset={68} />
               <ListItem title="Registrar gasto" subtitle="Compras, servicios, pagos" leading={<Icon name="remove-circle-outline" tint={colors.danger} />}
                 chevron onPress={() => navigation.navigate('NuevoGasto')} /></>}
           </Card>

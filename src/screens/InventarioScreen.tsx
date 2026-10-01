@@ -104,6 +104,7 @@ function InsumoCard({ insumo, onPress }: { insumo: Insumo; onPress: () => void }
 }
 
 function MovimientoSheet({ insumo, isAdmin, onClose }: { insumo: Insumo | null; isAdmin: boolean; onClose: () => void }) {
+  const verCostos = usePermissions()('INVENTARIO_VER_COSTOS');
   const queryClient = useQueryClient();
   const [tipo, setTipo] = useState<TipoMovimientoInsumo>('COMPRA');
   const [cantidad, setCantidad] = useState('');
@@ -139,7 +140,7 @@ function MovimientoSheet({ insumo, isAdmin, onClose }: { insumo: Insumo | null; 
       <TextField label={`Cantidad (${insumo?.unidadMedida.toLowerCase() ?? ''})`} icon="cube-outline" placeholder="0" value={cantidad}
         onChangeText={setCantidad} keyboardType="decimal-pad" autoFocus
         error={tipo === 'CONSUMO' && insumo && cantidadNum > insumo.stockActual ? `Solo hay ${qty(insumo.stockActual)} disponibles.` : ''} />
-      {tipo === 'COMPRA' && <>
+      {tipo === 'COMPRA' && verCostos && <>
         <TextField label="Costo total" optional prefix="S/" placeholder="0.00" value={costo} onChangeText={setCosto} keyboardType="decimal-pad"
           hint="Si indicas el costo, también se registra como gasto en la caja de hoy." />
         {costoNum > 0 && <View style={styles.choices}>

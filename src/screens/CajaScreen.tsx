@@ -55,9 +55,9 @@ export function CajaScreen({ navigation }: TabScreenProps<'Caja'>) {
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => void query.refetch()} tintColor={colors.primary} />}
         ListHeaderComponent={<View style={styles.header}>
           <TabHeader title="Caja" subtitle="Cobros y gastos de tu sede"
-            right={isToday && <Button label="Gasto" icon="remove" size="sm" variant="secondary" onPress={() => navigation.navigate('NuevoGasto')} />} />
+            right={isToday && can('CAJA_REGISTRAR_GASTO') && <Button label="Gasto" icon="remove" size="sm" variant="secondary" onPress={() => navigation.navigate('NuevoGasto')} />} />
           <View style={styles.dayBar}>
-            <DayButton icon="chevron-back" label="Día anterior" onPress={() => shift(-1)} />
+            <DayButton icon="chevron-back" label="Día anterior" onPress={() => shift(-1)} disabled={!can('CAJA_VER_CIERRES_ANTERIORES')} />
             <View style={styles.dayCenter}>
               <AppText variant="subheading">{isToday ? 'Hoy' : day.toLocaleDateString('es-PE', { weekday: 'long' })}</AppText>
               <AppText variant="caption">{day.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</AppText>
@@ -71,8 +71,10 @@ export function CajaScreen({ navigation }: TabScreenProps<'Caja'>) {
               <HeroStat label="Ingresos" value={money(totals.ingresos)} hint={`${totals.countIn} cobros`} />
               <View style={styles.heroDivider} />
               <HeroStat label="Gastos" value={money(totals.gastos)} hint={`${totals.countOut} registros`} />
-              <View style={styles.heroDivider} />
-              <HeroStat label="Digital" value={money(totals.digital)} hint="Yape, Plin, POS…" />
+              {can('CAJA_VER_MONTOS_DIGITALES') && <>
+                <View style={styles.heroDivider} />
+                <HeroStat label="Digital" value={money(totals.digital)} hint="Yape, Plin, POS…" />
+              </>}
             </View>
           </LinearGradient>
           <SegmentedControl<Filtro> value={filtro} onChange={setFiltro} segments={[
@@ -84,7 +86,7 @@ export function CajaScreen({ navigation }: TabScreenProps<'Caja'>) {
         ListEmptyComponent={query.isLoading ? <ListSkeleton /> : query.isError ? <ErrorState onRetry={() => void query.refetch()} />
           : <EmptyState icon="wallet-outline" title="Sin movimientos"
             text={isToday ? 'Los cobros de pedidos y los gastos de hoy aparecerán aquí.' : 'No hubo movimientos en este día.'}
-            actionLabel={isToday ? 'Registrar un gasto' : undefined} onAction={() => navigation.navigate('NuevoGasto')} />}
+            actionLabel={isToday && can('CAJA_REGISTRAR_GASTO') ? 'Registrar un gasto' : undefined} onAction={() => navigation.navigate('NuevoGasto')} />}
         renderItem={({ item: m }) => {
           const ingreso = m.tipo === 'INGRESO';
           const tint = ingreso ? colors.success : colors.danger;

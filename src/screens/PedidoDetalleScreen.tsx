@@ -134,7 +134,8 @@ export function PedidoDetalleScreen({ navigation, route }: AppScreenProps<'Pedid
   const domicilio = esDomicilio(p.modalidad);
   const tienePunto = p.latitudEntrega != null && p.longitudEntrega != null;
   const atrasado = !isFinal && !ready && isPastDay(p.fechaEntregaEst);
-  const puedeAnular = rol === 'ADMIN' || rol === 'COORDINADOR';
+  // El servidor exige rol ADMIN/COORDINADOR para anular; además el administrador puede quitar el sub-permiso.
+  const puedeAnular = (rol === 'ADMIN' || rol === 'COORDINADOR') && can('PEDIDOS_ANULAR');
 
   const confirmAdvance = () => {
     if (ready) { setModal('entrega'); return; }

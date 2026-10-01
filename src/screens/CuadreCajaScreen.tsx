@@ -71,7 +71,7 @@ export function CuadreCajaScreen({ navigation }: AppScreenProps<'CuadreCaja'>) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={movs.isRefetching} onRefresh={refetchAll} tintColor={colors.primary} />}>
         <View style={styles.dayBar}>
-          <DayButton icon="chevron-back" label="Día anterior" onPress={() => shift(-1)} />
+          <DayButton icon="chevron-back" label="Día anterior" onPress={() => shift(-1)} disabled={!can('CAJA_VER_CIERRES_ANTERIORES')} />
           <View style={styles.dayCenter}>
             <AppText variant="subheading">{isToday ? 'Hoy' : day.toLocaleDateString('es-PE', { weekday: 'long' })}</AppText>
             <AppText variant="caption">{day.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</AppText>
@@ -103,6 +103,7 @@ function CuadreForm({ totals, sugerido, onSave }: {
   sugerido: number;
   onSave: (form: { cajaInicial: number; totalContado: number; corte: number; nota?: string }) => Promise<void>;
 }) {
+  const can = usePermissions();
   const [inicial, setInicial] = useState(toText(sugerido));
   const [contado, setContado] = useState('');
   const [corte, setCorte] = useState('');
@@ -138,9 +139,9 @@ function CuadreForm({ totals, sugerido, onSave }: {
           <Divider inset={space.lg} />
           <Line label="Efectivo esperado" value={money(esperado)} strong />
         </Card>
-        <AppText variant="caption" style={styles.note}>
+        {can('CAJA_VER_MONTOS_DIGITALES') && <AppText variant="caption" style={styles.note}>
           Además cobraste {money(totals.digital)} por Yape, Plin o transferencia y {money(totals.tarjeta)} con tarjeta; no entran al conteo de efectivo.
-        </AppText>
+        </AppText>}
       </Section>
 
       <Section title="Tu conteo">
@@ -169,6 +170,7 @@ function CuadreForm({ totals, sugerido, onSave }: {
 }
 
 function CuadreGuardado({ c }: { c: CuadreCaja }) {
+  const verDigitales = usePermissions()('CAJA_VER_MONTOS_DIGITALES');
   const config = useConfiguracion();
   const origin = useAuthStore((st) => st.session?.apiOrigin ?? '');
   const [busy, setBusy] = useState<'pdf' | 'imprimir' | null>(null);
@@ -204,10 +206,12 @@ function CuadreGuardado({ c }: { c: CuadreCaja }) {
         <Line label="Corte" value={money(c.corte)} />
         <Divider inset={space.lg} />
         <Line label="Queda en caja" value={money(c.cajaFinal)} />
-        <Divider inset={space.lg} />
-        <Line label="Yape, Plin y transferencia" value={money(c.ingresosDigital)} />
-        <Divider inset={space.lg} />
-        <Line label="Tarjeta" value={money(c.ingresosTarjeta)} />
+        {verDigitales && <>
+          <Divider inset={space.lg} />
+          <Line label="Yape, Plin y transferencia" value={money(c.ingresosDigital)} />
+          <Divider inset={space.lg} />
+          <Line label="Tarjeta" value={money(c.ingresosTarjeta)} />
+        </>}
       </Card>
       {!!c.nota && <InlineAlert tone="info" title="Nota" text={c.nota} />}
       <View style={{ flexDirection: 'row', gap: space.md }}>

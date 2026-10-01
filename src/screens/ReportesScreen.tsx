@@ -25,8 +25,11 @@ export function ReportesScreen({ navigation }: AppScreenProps<'Reportes'>) {
   const can = usePermissions();
   const openWeb = useOpenWeb();
   const allowed = can('REPORTES');
-  const query = useQuery({ queryKey: ['reportes', 'gerencial', sedeId], queryFn: getVistaGerencial, enabled: allowed });
-  const sedes = useQuery({ queryKey: ['reportes', 'consolidado'], queryFn: getConsolidado, enabled: allowed && isAdmin });
+  // Sub-permisos finos: la vista gerencial y el consolidado de sedes se activan por rol.
+  const verGerencial = can('REPORTES_VER_GERENCIAL');
+  const verConsolidado = isAdmin && can('REPORTES_VER_CONSOLIDADO');
+  const query = useQuery({ queryKey: ['reportes', 'gerencial', sedeId], queryFn: getVistaGerencial, enabled: allowed && verGerencial });
+  const sedes = useQuery({ queryKey: ['reportes', 'consolidado'], queryFn: getConsolidado, enabled: allowed && verConsolidado });
   const webButton = <IconButton icon="open-outline" label="Abrir reportes en la web" onPress={() => openWeb('reportes')} />;
 
   if (!allowed) return <Screen><StackHeader title="Reportes" onBack={navigation.goBack} /><View style={styles.content}><LockedState module="ver reportes" /></View></Screen>;
@@ -37,7 +40,7 @@ export function ReportesScreen({ navigation }: AppScreenProps<'Reportes'>) {
       <StackHeader title="Reportes" subtitle="Cómo va tu lavandería" onBack={navigation.goBack} right={webButton} />
       <ScrollView contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={query.isRefetching} onRefresh={() => { void query.refetch(); void sedes.refetch(); }} tintColor={colors.primary} />}>
-        {query.isLoading ? <ListSkeleton rows={6} /> : query.isError || !v ? <ErrorState onRetry={() => void query.refetch()} /> : <>
+        {verGerencial && (query.isLoading ? <ListSkeleton rows={6} /> : query.isError || !v ? <ErrorState onRetry={() => void query.refetch()} /> : <>
           <MonthHero v={v} />
           <View style={styles.grid}>
             <Kpi label="Vendido hoy" value={money(v.ventasHoy)} hint={`Cobrado ${money(v.cobradoHoy)}`} icon="today-outline" />
@@ -73,7 +76,7 @@ export function ReportesScreen({ navigation }: AppScreenProps<'Reportes'>) {
             </Card>
           </Section>}
 
-          {(sedes.data?.length ?? 0) > 1 && <Section title="Por sede">
+          {verConsolidado && (sedes.data?.length ?? 0) > 1 && <Section title="Por sede">
             <Card padded={false}>
               {sedes.data!.map((s, i) => <View key={s.sedeId}>
                 {i > 0 && <Divider inset={60} />}
@@ -82,11 +85,12 @@ export function ReportesScreen({ navigation }: AppScreenProps<'Reportes'>) {
               </View>)}
             </Card>
           </Section>}
+        </>)}
 
           <Section title="Reportes detallados">
             <AppText variant="caption" style={styles.detailHint}>Por rango de fechas, con tabla y exportación a Excel (.xlsx) para compartir o abrir en tu computadora.</AppText>
             <Card padded={false}>
-              {REPORTES.map((r, i) => <View key={r.clave}>
+              {REPORTES.filter((r) => r.clave !== 'cuadres-caja' || can('CAJA_REPORTE_CUADRES')).map((r, i) => <View key={r.clave}>
                 {i > 0 && <Divider inset={60} />}
                 <ListItem title={r.titulo} subtitle={r.descripcion} chevron
                   leading={<Ionicons name={r.icono} size={22} color={colors.primary} />}
@@ -94,7 +98,6 @@ export function ReportesScreen({ navigation }: AppScreenProps<'Reportes'>) {
               </View>)}
             </Card>
           </Section>
-        </>}
       </ScrollView>
     </Screen>
   );
